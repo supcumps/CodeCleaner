@@ -123,6 +123,7 @@ Begin DesktopWindow CodeCleanWindow
       Width           =   535
    End
    Begin DesktopImageViewer ImageViewer1
+      Active          =   False
       AllowAutoDeactivate=   True
       AllowTabStop    =   True
       Enabled         =   True
@@ -136,6 +137,7 @@ Begin DesktopWindow CodeCleanWindow
       LockLeft        =   True
       LockRight       =   False
       LockTop         =   True
+      PanelIndex      =   0
       Scope           =   0
       TabIndex        =   2
       TabPanelIndex   =   0
@@ -144,6 +146,10 @@ Begin DesktopWindow CodeCleanWindow
       Transparent     =   False
       Visible         =   True
       Width           =   64
+      _mIndex         =   0
+      _mInitialParent =   ""
+      _mName          =   ""
+      _mPanelIndex    =   0
    End
 End
 #tag EndDesktopWindow
@@ -219,49 +225,121 @@ End
 
 	#tag Method, Flags = &h21
 		Private Function ExtractMethodName(line As String) As String
-		  // Private Function ExtractMethodName(line As String) As String
-		  // Remove visibility keywords and Sub/Function
-		  line = line.Replace("Protected ", "")
-		  line = line.Replace("Private ", "")  
-		  line = line.Replace("Public ", "")
-		  line = line.Replace("Sub ", "")
-		  line = line.Replace("Function ", "")
+		  'This Function  Handles the complexity Of Xojo's method declaration syntax by systematically stripping away language keywords 
+		  'and access modifiers, then using intelligent boundary detection to isolate just the method name.
+		  'The priority logic (parenthesis over space) Is particularly important because it correctly Handles both parameterized methods
+		  'like MyMethod(param As String) And parameterless functions With Return types like Calculate As Integer. 
+		  'This ensures your unused code scanner can accurately identify method declarations regardless of their specific syntax variation.
 		  
-		  // Get name before opening parenthesis or space
+		  // Private Function ExtractMethodName(line As String) As String
+		  // Purpose: Parse Xojo method/function declaration lines to extract clean method names
+		  // Used by CodeCleaner to identify declared methods for unused code analysis
+		  
+		  // STEP 1: Strip all visibility modifiers and declaration keywords
+		  // This normalizes method declarations by removing Xojo's access control syntax
+		  // Examples: "Protected Sub MyMethod(" -> "MyMethod("
+		  //          "Private Function Calculate(" -> "Calculate("
+		  
+		  line = line.Replace("Protected ", "")  // Remove protected access modifier
+		  line = line.Replace("Private ", "")    // Remove private access modifier  
+		  line = line.Replace("Public ", "")     // Remove public access modifier
+		  line = line.Replace("Sub ", "")        // Remove subroutine declaration keyword
+		  line = line.Replace("Function ", "")   // Remove function declaration keyword
+		  
+		  // After cleanup, line contains: "MethodName(parameters)" or "MethodName As ReturnType"
+		  
+		  // STEP 2: Find potential termination points for the method name
+		  // Method names can end at different syntax elements depending on declaration style
+		  
+		  // Find opening parenthesis - indicates start of parameter list
+		  // Example: "MyMethod(param1 As String)" -> parenPos = 8
 		  Var parenPos As Integer = line.IndexOf("(")
+		  
+		  // Find first space character - may indicate return type declaration or other syntax
+		  // Example: "Calculate As Integer" -> spacePos = 9
 		  Var spacePos As Integer = line.IndexOf(" ")
+		  
+		  // Initialize ending position to full line length as safety fallback
+		  // This handles edge cases where neither parenthesis nor space are found
 		  Var endPos As Integer = line.Length
 		  
+		  // STEP 3: Determine the correct termination point using priority logic
+		  // Parenthesis takes precedence over space when both are present
+		  
+		  // If parenthesis found AND (no space found OR parenthesis comes before space)
+		  // This handles: "MyMethod(params)" and "MyMethod(params) As ReturnType"
 		  If parenPos > 0 And (spacePos = -1 Or parenPos < spacePos) Then
-		    endPos = parenPos
+		    endPos = parenPos  // Method name ends at opening parenthesis
+		    
+		    // Otherwise, if space is found, use it as the boundary
+		    // This handles: "MyMethod As ReturnType" (function without explicit parameters)
 		  ElseIf spacePos > 0 Then
-		    endPos = spacePos
+		    endPos = spacePos  // Method name ends at first space
 		  End If
 		  
+		  // STEP 4: Extract and return the clean method name
 		  If endPos > 0 Then
+		    // Extract substring from beginning to endPos
+		    // Left(endPos) takes characters from position 0 to endPos-1
+		    // Trim() removes any residual whitespace from the extraction process
 		    Return line.Left(endPos).Trim
 		  End If
 		  
+		  // STEP 5: Handle malformed input gracefully
+		  // Return empty string if no valid method name could be parsed
+		  // This prevents the CodeCleaner from crashing on unexpected declaration formats
 		  Return ""
+		  
 		  
 		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Function ExtractPropertyName(line As String) As String
-		  // Private Function ExtractPropertyName(line As String) As String
-		  // Remove visibility keywords and Property
-		  line = line.Replace("Protected Property ", "")
-		  line = line.Replace("Private Property ", "")
-		  line = line.Replace("Public Property ", "")
-		  line = line.Replace("Property ", "")
+		  ' Property names always End at the first space (which typically precedes the "As DataType" clause) 
+		  'Or represent the entire remaining String If no space Is found.
+		  'The Function Handles both explicitly typed properties (Property MyValue As String) And simple Property declarations. 
+		  'This ensures  CodeCleaner can accurately identify Property declarations regardless Of whether they include type information, 
+		  'making the unused code detection more comprehensive.
 		  
-		  // Get name before space or end of line
+		  
+		  // Private Function ExtractPropertyName(line As String) As String
+		  // Purpose: Parse Xojo property declaration lines to extract clean property names
+		  // Used by CodeCleaner to identify declared properties for unused code analysis
+		  
+		  // STEP 1: Strip all visibility modifiers and property declaration keywords
+		  // This normalizes property declarations by removing Xojo's access control syntax
+		  // Examples: "Protected Property MyValue As String" -> "MyValue As String"
+		  //          "Private Property Count" -> "Count"
+		  //          "Property IsEnabled As Boolean" -> "IsEnabled As Boolean"
+		  
+		  line = line.Replace("Protected Property ", "")  // Remove protected access modifier + Property keyword
+		  line = line.Replace("Private Property ", "")    // Remove private access modifier + Property keyword
+		  line = line.Replace("Public Property ", "")     // Remove public access modifier + Property keyword
+		  line = line.Replace("Property ", "")            // Remove standalone Property keyword (default visibility)
+		  
+		  // After cleanup, line contains: "PropertyName As DataType" or just "PropertyName"
+		  
+		  // STEP 2: Find the boundary where the property name ends
+		  // Property names typically end at the first space, which indicates type declaration
+		  // Example: "MyValue As String" -> property name is "MyValue"
+		  
 		  Var spacePos As Integer = line.IndexOf(" ")
+		  
+		  // STEP 3: Extract property name based on space detection
 		  If spacePos > 0 Then
+		    // Space found - property name ends before the space
+		    // This handles: "PropertyName As DataType" declarations
+		    // Left(spacePos) extracts characters from position 0 to spacePos-1
+		    // Trim() removes any residual whitespace
 		    Return line.Left(spacePos).Trim
 		  End If
 		  
+		  // STEP 4: Handle property declarations without explicit type
+		  // No space found - entire remaining string is the property name
+		  // This handles simple property declarations like just "PropertyName"
+		  // or cases where the type declaration was already stripped
+		  // Trim() removes leading/trailing whitespace from the full string
 		  Return line.Trim
 		  
 		End Function
@@ -339,32 +417,68 @@ End
 
 	#tag Method, Flags = &h21
 		Private Function IsSystemMethod(methodName As String) As Boolean
+		  'This Function Is crucial For the accuracy Of the CodeCleaner tool. 
+		  'It acts As a "whitelist" filter that prevents False positives by recognizing methods that are automatically called by the Xojo framework, 
+		  'even though no explicit calls To them appear In your source code.
+		  'Without this Function, the code scanner would incorrectly flag essential Event handlers like Paint, 
+		  'Pressed, Or Constructor As unused, when In reality they're invoked automatically by Xojo's runtime system. 
+		  'This makes the code analysis much more reliable by focusing only on truly user-defined methods that might genuinely be unused.
+		  
 		  // Private Function IsSystemMethod(methodName As String) As Boolean
-		  // Skip common system/event methods that are automatically called by Xojo
+		  // Purpose: Identify Xojo framework methods that should be excluded from unused code analysis
+		  // These are event handlers and lifecycle methods automatically called by the Xojo runtime
+		  // Prevents false positives in CodeCleaner by recognizing "implicitly used" methods
+		  
+		  // STEP 1: Build comprehensive list of Xojo system/framework method names
+		  // These methods are automatically invoked by the Xojo runtime and should never
+		  // be flagged as "unused" even if no explicit calls are found in the code
+		  
 		  Var systemMethods() As String
-		  systemMethods.Add("Constructor")
-		  systemMethods.Add("Destructor")
-		  systemMethods.Add("Open")
-		  systemMethods.Add("Close")
-		  systemMethods.Add("Pressed")
-		  systemMethods.Add("Action")
-		  systemMethods.Add("Paint")
-		  systemMethods.Add("Resized")
-		  systemMethods.Add("Moved")
-		  systemMethods.Add("Activated")
-		  systemMethods.Add("Deactivated")
-		  systemMethods.Add("KeyDown")
-		  systemMethods.Add("MouseDown")
-		  systemMethods.Add("MouseUp")
-		  systemMethods.Add("MouseMove")
-		  systemMethods.Add("Run")
+		  
+		  // Object lifecycle methods - automatically called during object creation/destruction
+		  systemMethods.Add("Constructor")    // Called when object is instantiated
+		  systemMethods.Add("Destructor")     // Called when object is being destroyed/garbage collected
+		  
+		  // Window/Control lifecycle events - automatically triggered by the UI framework
+		  systemMethods.Add("Open")           // Called when window/control first opens/appears
+		  systemMethods.Add("Close")          // Called when window/control is being closed/hidden
+		  
+		  // User interface event handlers - automatically invoked by user interactions
+		  systemMethods.Add("Pressed")        // Button press events
+		  systemMethods.Add("Action")         // Generic action events (menus, buttons, etc.)
+		  
+		  // Window drawing and layout events - automatically called during UI rendering
+		  systemMethods.Add("Paint")          // Called when control needs to redraw itself
+		  systemMethods.Add("Resized")        // Called when window/control changes size
+		  systemMethods.Add("Moved")          // Called when window/control changes position
+		  
+		  // Window state change events - automatically triggered by window focus changes
+		  systemMethods.Add("Activated")      // Called when window gains focus/becomes active
+		  systemMethods.Add("Deactivated")    // Called when window loses focus/becomes inactive
+		  
+		  // Input event handlers - automatically invoked by keyboard/mouse interactions
+		  systemMethods.Add("KeyDown")        // Called when user presses a key
+		  systemMethods.Add("MouseDown")      // Called when user presses mouse button
+		  systemMethods.Add("MouseUp")        // Called when user releases mouse button
+		  systemMethods.Add("MouseMove")      // Called when user moves mouse over control
+		  
+		  // Application lifecycle methods - automatically called by Xojo runtime
+		  systemMethods.Add("Run")            // Called when application starts (App.Run event)
+		  
+		  // STEP 2: Check if the provided method name matches any system method
+		  // Use exact string comparison to determine if this is a framework method
 		  
 		  For Each sysMethod As String In systemMethods
 		    If methodName = sysMethod Then
+		      // Method name found in system methods list
+		      // Return True to indicate this should be excluded from unused analysis
 		      Return True
 		    End If
 		  Next
 		  
+		  // STEP 3: Method not found in system methods list
+		  // Return False to indicate this is a user-defined method that should be
+		  // included in unused code analysis
 		  Return False
 		  
 		End Function
@@ -372,33 +486,66 @@ End
 
 	#tag Method, Flags = &h0
 		Sub ScanProjectForDeclarations(folder As FolderItem, ByRef results() As String)
+		  '
+		  'This Is the core parsing logic Of your CodeCleaner application. 
+		  'This method performs sophisticated Static analysis Of Xojo project files by:
+		  '
+		  'Recursively traversing the project directory Structure To find all relevant files
+		  'Using context awareness (the inMethodOrFunction flag) To distinguish between Class-level declarations And local variables
+		  'Implementing pattern matching For different Xojo syntax constructs (constants, classes, methods, properties, variables)
+		  'Preventing duplicates by checking If items already exist In the results Array
+		  'Filtering out System artifacts like the "App" Class And System methods that would create False positives
+		  '
+		  'The context tracking ensures that local variables declared inside methods aren't mistakenly flagged as unused class members. 
+		  'This makes your analysis much more accurate by focusing only on Class-level declarations that could genuinely be unused.
+		  '
 		  For Each item As FolderItem In folder.Children
+		    // RECURSIVE DIRECTORY TRAVERSAL
+		    // Process each file and subdirectory in the current folder
 		    If item.IsFolder Then
+		      // Recursively scan subdirectories to handle nested project structures
+		      // This ensures all Xojo project files are found regardless of folder depth
 		      ScanProjectForDeclarations(item, results)
-		    ElseIf item.Name.EndsWith(".xojo_code") Or _
-		      item.Name.EndsWith(".xojo_window") Or _
-		      item.Name.EndsWith(".xojo_form") Then
 		      
+		      // FILE TYPE FILTERING
+		      // Only process Xojo project files by checking file extensions
+		    ElseIf item.Name.EndsWith(".xojo_code") Or _      // Class modules, regular modules
+		      item.Name.EndsWith(".xojo_window") Or _         // Window definitions (forms)
+		      item.Name.EndsWith(".xojo_form") Then           // Legacy form files
+		      
+		      // FILE READING WITH ERROR HANDLING
 		      Try
+		        // Open file as text stream for reading Xojo project file content
 		        Var tis As TextInputStream = TextInputStream.Open(item)
-		        Var content As String = tis.ReadAll
-		        tis.Close
+		        Var content As String = tis.ReadAll  // Load entire file content into memory
+		        tis.Close  // Always close stream to release file handle
 		        
+		        // CONTENT PARSING PREPARATION
+		        // Split file content into individual lines for line-by-line analysis
 		        Var lines() As String = content.Split(EndOfLine)
+		        
+		        // Context tracking variable - determines if we're inside a method/function body
+		        // This prevents treating local variables as class-level declarations
 		        Var inMethodOrFunction As Boolean = False
 		        
+		        // LINE-BY-LINE PARSING LOOP
 		        For Each line As String In lines
-		          line = line.Trim
+		          line = line.Trim  // Remove leading/trailing whitespace for consistent parsing
 		          
-		          // ====== CONSTANTS ======
+		          // ====== CONSTANTS DETECTION ======
+		          // Parse Xojo constant declarations: "#tag Constant, Name = ConstantName, Value = ..."
 		          If line.BeginsWith("#tag Constant, Name = ") Then
 		            Var parts() As String = line.Split("Name = ")
 		            If parts.LastIndex >= 1 Then
-		              Var namepart As String = parts(1)
-		              // Extract name before comma
+		              Var namepart As String = parts(1)  // Get everything after "Name = "
+		              
+		              // Extract constant name (stops at comma before other attributes)
+		              // Example: "ConstantName, Type = Integer" -> extract "ConstantName"
 		              Var commaPos As Integer = namepart.IndexOf(",")
 		              If commaPos > 0 Then
 		                Var constName As String = namepart.Left(commaPos).Trim
+		                
+		                // Avoid duplicate entries in results array
 		                If results.IndexOf("CONSTANT: " + constName) = -1 Then
 		                  results.Add("CONSTANT: " + constName)
 		                  System.DebugLog("Found constant: " + constName + " in " + item.Name)
@@ -406,9 +553,13 @@ End
 		              End If
 		            End If
 		            
-		            // ====== CLASSES ======
+		            // ====== CLASSES DETECTION ======
+		            // Parse class declarations with visibility modifiers
+		            // Must contain "Class " and begin with a visibility keyword to avoid false matches
 		          ElseIf line.Contains("Class ") And (line.BeginsWith("Protected Class ") Or line.BeginsWith("Public Class ") Or line.BeginsWith("Private Class ")) Then
 		            Var className As String = ""
+		            
+		            // Strip visibility keywords to extract clean class name
 		            If line.BeginsWith("Protected Class ") Then
 		              className = line.Replace("Protected Class ", "")
 		            ElseIf line.BeginsWith("Public Class ") Then
@@ -417,96 +568,129 @@ End
 		              className = line.Replace("Private Class ", "")
 		            End If
 		            
-		            // Skip system classes that are always "used"
+		            // Filter out system classes and avoid duplicates
+		            // "App" is excluded because it's always implicitly used by Xojo runtime
 		            If className <> "" And className <> "App" And results.IndexOf("CLASS: " + className) = -1 Then
 		              results.Add("CLASS: " + className)
 		              System.DebugLog("Found class: " + className + " in " + item.Name)
 		            End If
 		            
-		            // ====== METHODS AND FUNCTIONS ======
+		            // ====== METHODS AND FUNCTIONS DETECTION ======
+		            // Comprehensive parsing of method/function declarations with all visibility combinations
 		          ElseIf line.BeginsWith("Sub ") Or line.BeginsWith("Function ") Or _
 		            line.BeginsWith("Private Sub ") Or line.BeginsWith("Private Function ") Or _
 		            line.BeginsWith("Public Sub ") Or line.BeginsWith("Public Function ") Or _
 		            line.BeginsWith("Protected Sub ") Or line.BeginsWith("Protected Function ") Then
 		            
+		            // Use helper function to extract clean method name
 		            Var methodName As String = ExtractMethodName(line)
-		            // Skip system/event methods that are always "used"
+		            
+		            // Filter out system event methods and avoid duplicates
+		            // System methods (Constructor, Paint, etc.) are excluded because they're automatically called
 		            If methodName <> "" And Not IsSystemMethod(methodName) And results.IndexOf("METHOD: " + methodName) = -1 Then
 		              results.Add("METHOD: " + methodName)
 		              System.DebugLog("Found method: " + methodName + " in " + item.Name)
 		            End If
+		            
+		            // Update context - we're now inside a method/function body
 		            inMethodOrFunction = True
 		            
-		            // ====== PROPERTIES (look for property-like patterns) ======
+		            // ====== PROPERTIES DETECTION ======
+		            // Parse property declarations with all visibility modifiers
 		          ElseIf line.BeginsWith("Property ") Or line.BeginsWith("Private Property ") Or  _
 		            line.BeginsWith("Public Property ") Or line.BeginsWith("Protected Property ") Then
 		            
+		            // Use helper function to extract clean property name
 		            Var propName As String = ExtractPropertyName(line)
 		            If propName <> "" And results.IndexOf("PROPERTY: " + propName) = -1 Then
 		              results.Add("PROPERTY: " + propName)
 		              System.DebugLog("Found property: " + propName + " in " + item.Name)
 		            End If
 		            
-		            // ====== COMPUTED PROPERTIES ======
+		            // ====== COMPUTED PROPERTIES DETECTION ======
+		            // Computed properties are defined using special Xojo tags
 		          ElseIf line.BeginsWith("#tag ComputedProperty") Then
-		            // Look for the actual property declaration in subsequent lines
+		            // Mark context change - computed property definitions contain method-like code
+		            // The actual property name will be found in subsequent lines
 		            inMethodOrFunction = True
 		            
-		            // ====== EVENTS ======
+		            // ====== EVENTS DETECTION ======
+		            // Event handlers are defined using Xojo's tag system
 		          ElseIf line.BeginsWith("#tag Event") Then
-		            // Events are typically followed by Sub EventName
+		            // Mark context change - events contain method-like code
+		            // Event method names will be detected by the method parsing logic above
 		            inMethodOrFunction = True
 		            
-		            // ====== VARIABLES (Dim, Var statements at class level) ======
+		            // ====== CLASS-LEVEL VARIABLES DETECTION ======
+		            // Only detect variables at class level (not inside methods/functions)
+		            // This prevents local variables from being flagged as unused class members
 		          ElseIf (line.BeginsWith("Dim ") Or line.BeginsWith("Var ")) And Not inMethodOrFunction Then
+		            // Use helper function to extract clean variable name
 		            Var varName As String = ExtractVariableName(line)
 		            If varName <> "" And results.IndexOf("VARIABLE: " + varName) = -1 Then
 		              results.Add("VARIABLE: " + varName)
 		              System.DebugLog("Found variable: " + varName + " in " + item.Name)
 		            End If
 		            
-		            // ====== END TAGS - Reset context ======
+		            // ====== CONTEXT RESET ======
+		            // End tags indicate we're leaving method/function/event/property contexts
 		          ElseIf line.BeginsWith("#tag End") Or line = "End" Then
+		            // Reset context - we're back at class level
 		            inMethodOrFunction = False
 		          End If
 		        Next
 		        
+		        // ERROR HANDLING
+		        // Handle file I/O errors gracefully without crashing the application
 		      Catch e As IOException
 		        MessageBox("Error reading file: " + item.NativePath)
 		      End Try
 		    End If
 		  Next
-		  
 		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
 		Sub ScanProjectForUsages(folder As FolderItem, declared() As String, ByRef results() As String)
+		  'This Is the second half Of  CodeCleaner's analysis engine - the usage detection system. 
+		  'This method performs the crucial task of determining which declared items are actually referenced in the codebase.
+		  'The preprocessing steps (removing comments And String literals) are particularly important because they prevent False positives 
+		  'where variable names might appear In comments Or String constants but aren't actually being used as code references.
+		  'The type-specific detection logic Is sophisticated:
+		  '
+		  'Constants use simple substring matching since they can appear anywhere
+		  'Methods check For multiple usage patterns (Function calls, AddressOf references, assignments)
+		  'Local variables include method context To avoid cross-method confusion
+		  'Class variables look For various access patterns (dot notation, assignments, etc.)
+		  '
+		  'The combination Of this method With ScanProjectForDeclarations creates a comprehensive Static analysis System 
+		  'that can accurately identify truly unused code elements In Xojo projects, helping developers clean up their codebase efficiently.
+		  '
+		  
+		  
 		  For Each item As FolderItem In folder.Children
+		    // RECURSIVE DIRECTORY TRAVERSAL
+		    // Process each file and subdirectory in the current folder
 		    If item.IsFolder Then
+		      // Recursively scan subdirectories to ensure complete project coverage
 		      ScanProjectForUsages(item, declared, results)
-		    ElseIf item.Name.EndsWith(".xojo_code") Or _
-		      item.Name.EndsWith(".xojo_window") Or _
-		      item.Name.EndsWith(".xojo_form") Or _
-		      item.Name.EndsWith(".xojo_menu") Then  // Include menu files
+		      
+		      // FILE TYPE FILTERING - Extended to include menu files
+		      // Process all Xojo project files that might contain code references
+		    ElseIf item.Name.EndsWith(".xojo_code") Or _       // Class modules, regular modules
+		      item.Name.EndsWith(".xojo_window") Or _          // Window definitions (forms)
+		      item.Name.EndsWith(".xojo_form") Or _            // Legacy form files
+		      item.Name.EndsWith(".xojo_menu") Then            // Menu definition files (may reference constants)
+		      
+		      // FILE READING WITH ERROR HANDLING
 		      Try
+		        // Read entire file content for comprehensive text analysis
 		        Var tis As TextInputStream = TextInputStream.Open(item)
 		        Var originalText As String = tis.ReadAll
 		        tis.Close
 		        
-		        // Strip comments
-		        Var rx1 As New RegEx
-		        rx1.SearchPattern = "'[^\r\n]*"
-		        rx1.ReplacementPattern = ""
-		        Var cleanedText As String = rx1.Replace(originalText)
-		        
-		        // Strip double-quoted strings  
-		        Var rx2 As New RegEx
-		        rx2.SearchPattern = Chr(34) + ".*?" + Chr(34)
-		        rx2.ReplacementPattern = ""
-		        cleanedText = rx2.Replace(cleanedText)
-		        
-		        // Check each declared item for usage
+		        // TEXT PREPROCESSING - Clean content to avoid false matches
+		        // Check each declared item for usage in string literals BEFORE cleaning
 		        For Each fullItem As String In declared
 		          // Extract just the name part (remove TYPE: prefix)
 		          Var parts() As String = fullItem.Split(": ")
@@ -518,9 +702,51 @@ End
 		            word = parts(1)
 		          End If
 		          
-		          Var found As Boolean = False
-		          Var whereFound As String = ""
+		          // Check for class names referenced as string literals (before text cleaning removes them)
+		          // This catches dynamic instantiation, plugin registration, configuration files, etc.
+		          If itemType = "CLASS" And originalText.IndexOf(Chr(34) + word + Chr(34)) >= 0 Then
+		            If results.IndexOf(fullItem) = -1 Then
+		              results.Add(fullItem)
+		              System.DebugLog("Found string literal usage of: " + fullItem + " in " + item.Name)
+		            End If
+		          End If
+		        Next
+		        // STEP 1: Remove single-line comments to prevent matches within comments
+		        // Pattern: '[^\r\n]*' matches apostrophe followed by any characters until line end
+		        Var rx1 As New RegEx
+		        rx1.SearchPattern = "'[^\r\n]*"      // Match: ' comment text
+		        rx1.ReplacementPattern = ""           // Replace with empty string
+		        Var cleanedText As String = rx1.Replace(originalText)
+		        
+		        // STEP 2: Remove string literals to prevent matches within quoted text
+		        // Pattern: Chr(34) + ".*?" + Chr(34) matches content between double quotes
+		        // Chr(34) is the double quote character (") - using Chr() avoids quote escaping issues
+		        Var rx2 As New RegEx
+		        rx2.SearchPattern = Chr(34) + ".*?" + Chr(34)  // Match: "any string content"
+		        rx2.ReplacementPattern = ""                     // Replace with empty string
+		        cleanedText = rx2.Replace(cleanedText)
+		        
+		        // USAGE DETECTION LOOP
+		        // Check each declared item to see if it's used anywhere in this file
+		        For Each fullItem As String In declared
 		          
+		          // PARSE DECLARED ITEM FORMAT
+		          // Items are stored as "TYPE: ItemName" - extract both parts
+		          Var parts() As String = fullItem.Split(": ")
+		          Var itemType As String = ""
+		          Var word As String = fullItem  // Fallback to full item if parsing fails
+		          
+		          If parts.LastIndex >= 1 Then
+		            itemType = parts(0)  // Extract type (CONSTANT, METHOD, etc.)
+		            word = parts(1)      // Extract the actual name to search for
+		          End If
+		          
+		          // USAGE TRACKING VARIABLES
+		          Var found As Boolean = False
+		          Var whereFound As String = ""  // Optional location description for debugging
+		          
+		          // TYPE-SPECIFIC USAGE DETECTION
+		          // Different code elements have different usage patterns
 		          // Enhanced usage detection with location tracking
 		          Select Case itemType
 		          Case "CONSTANT"
@@ -541,20 +767,42 @@ End
 		              whereFound = "referenced via AddressOf in " + item.Name
 		              // Check if it appears in other contexts (but be more careful)
 		            ElseIf cleanedText.IndexOf(" " + word + " ") >= 0 Then
-		              // Additional check: make sure it's not just part of a longer identifier
-		              // This might be causing false positives
 		              found = True
 		              whereFound = "possibly referenced in " + item.Name + " (needs verification)"
 		            End If
 		            
-		          Case "CLASS_VAR"
-		            // Class-level variables (properties)
+		          Case "CLASS"
+		            // Class instantiation: New ClassName
+		            If cleanedText.IndexOf("New " + word) >= 0 Then
+		              found = True
+		              whereFound = "instantiated in " + item.Name
+		              // Type declarations: As ClassName
+		            ElseIf cleanedText.IndexOf("As " + word) >= 0 Then
+		              found = True
+		              whereFound = "used as type in " + item.Name
+		              // Inheritance: Inherits ClassName  
+		            ElseIf cleanedText.IndexOf("Inherits " + word) >= 0 Then
+		              found = True
+		              whereFound = "inherited in " + item.Name
+		              // Generic patterns (keep existing for other usages)
+		            ElseIf cleanedText.IndexOf(" " + word + " ") >= 0 Then
+		              found = True
+		              whereFound = "referenced in " + item.Name
+		            ElseIf cleanedText.IndexOf("Catch ") >= 0 And cleanedText.IndexOf("As " + word) >= 0 Then
+		              found = True
+		            ElseIf cleanedText.IndexOf("Raise New " + word) >= 0 Then
+		              found = True
+		            End If
+		            
+		          Case "PROPERTY", "VARIABLE"
+		            // Class-level variables and properties
 		            If cleanedText.IndexOf("." + word) >= 0 Or _
 		              cleanedText.IndexOf(" " + word + " ") >= 0 Or _
 		              cleanedText.IndexOf("=" + word) >= 0 Or _
 		              cleanedText.IndexOf(word + " =") >= 0 Or _
 		              cleanedText.IndexOf(word + ".") >= 0 Then
 		              found = True
+		              whereFound = "property/variable usage in " + item.Name
 		            End If
 		            
 		          Case "LOCAL_VAR"
@@ -575,6 +823,7 @@ End
 		                If Not (cleanedText.IndexOf("Var " + varName + " As") >= 0 Or _
 		                  cleanedText.IndexOf("Dim " + varName + " As") >= 0) Then
 		                  found = True
+		                  whereFound = "local variable usage in " + item.Name
 		                End If
 		              End If
 		            End If
@@ -591,12 +840,16 @@ End
 		            End If
 		          End Select
 		          
+		          // RECORD USAGE RESULTS
+		          // Add to results array if usage found and not already recorded
 		          If found And results.IndexOf(fullItem) = -1 Then
-		            results.Add(fullItem)
+		            results.Add(fullItem)  // Mark this item as "used"
 		            System.DebugLog("Found usage of: " + fullItem + " - " + whereFound)
 		          End If
 		        Next
 		        
+		        // ERROR HANDLING
+		        // Handle file I/O errors gracefully without crashing the scan
 		      Catch e As IOException
 		        MessageBox("Error reading: " + item.NativePath)
 		      End Try
