@@ -172,10 +172,7 @@ End
 		      
 		      // Check if the current item is a file with specific Xojo project extensions
 		      // Using line continuation (_) to split the long conditional across multiple lines
-		    ElseIf item.Name.EndsWith(".xojo_code") Or _      // Xojo code files (classes, modules)
-		      item.Name.EndsWith(".xojo_window") Or _         // Xojo window/form definitions
-		      item.Name.EndsWith(".xojo_form") Or _           // Legacy Xojo form files
-		      item.Name.EndsWith(".xojo_project") Then        // Main Xojo project file
+		    ElseIf IsXojoSourceFile(item) Then
 		      
 		      // Add a visual separator header to the output showing which file is being processed
 		      // This helps distinguish between different files in the debug output
@@ -484,82 +481,111 @@ End
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Function IsXojoSourceFile(item As FolderItem) As Boolean
+		  // Check if this is a Xojo source file that should be scanned
+		  Var name As String = item.Name.Lowercase
+		  
+		  Return name.EndsWith(".xojo_code") Or _
+		  name.EndsWith(".xojo_window") Or _
+		  name.EndsWith(".xojo_form") Or _
+		  name.EndsWith(".xojo_menu") Or _
+		  name.EndsWith(".xojo_mobile_screen") Or _
+		  name.EndsWith(".xojo_mobile_container") Or _
+		  name.EndsWith(".xojo_ios_view") Or _
+		  name.EndsWith(".xojo_ios_screen") Or _
+		  name.EndsWith(".xojo_toolbar") Or _
+		  name.Contains(".xojo_") // Catch-all for any xojo_ files
+		  
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub ScanProjectForDeclarations(folder As FolderItem, ByRef results() As String)
-		  '
-		  'This Is the core parsing logic Of your CodeCleaner application. 
-		  'This method performs sophisticated Static analysis Of Xojo project files by:
-		  '
-		  'Recursively traversing the project directory Structure To find all relevant files
-		  'Using context awareness (the inMethodOrFunction flag) To distinguish between Class-level declarations And local variables
-		  'Implementing pattern matching For different Xojo syntax constructs (constants, classes, methods, properties, variables)
-		  'Preventing duplicates by checking If items already exist In the results Array
-		  'Filtering out System artifacts like the "App" Class And System methods that would create False positives
-		  '
-		  'The context tracking ensures that local variables declared inside methods aren't mistakenly flagged as unused class members. 
-		  'This makes your analysis much more accurate by focusing only on Class-level declarations that could genuinely be unused.
-		  '
+		  // Sub ScanProjectForDeclarations(folder As FolderItem, ByRef results() As String)
 		  For Each item As FolderItem In folder.Children
-		    // RECURSIVE DIRECTORY TRAVERSAL
-		    // Process each file and subdirectory in the current folder
 		    If item.IsFolder Then
-		      // Recursively scan subdirectories to handle nested project structures
-		      // This ensures all Xojo project files are found regardless of folder depth
 		      ScanProjectForDeclarations(item, results)
+		    ElseIf item.Name.EndsWith(".xojo_code") Or _
+		      item.Name.EndsWith(".xojo_window") Or _
+		      item.Name.EndsWith(".xojo_form") Or _
+		      item.Name.EndsWith(".xojo_mobile_screen") Or _
+		      item.Name.EndsWith(".xojo_mobile_container") Then
 		      
-		      // FILE TYPE FILTERING
-		      // Only process Xojo project files by checking file extensions
-		    ElseIf item.Name.EndsWith(".xojo_code") Or _      // Class modules, regular modules
-		      item.Name.EndsWith(".xojo_window") Or _         // Window definitions (forms)
-		      item.Name.EndsWith(".xojo_form") Then           // Legacy form files
-		      
-		      // FILE READING WITH ERROR HANDLING
 		      Try
-		        // Open file as text stream for reading Xojo project file content
 		        Var tis As TextInputStream = TextInputStream.Open(item)
-		        Var content As String = tis.ReadAll  // Load entire file content into memory
-		        tis.Close  // Always close stream to release file handle
+		        Var content As String = tis.ReadAll
+		        tis.Close
 		        
-		        // CONTENT PARSING PREPARATION
-		        // Split file content into individual lines for line-by-line analysis
 		        Var lines() As String = content.Split(EndOfLine)
-		        
-		        // Context tracking variable - determines if we're inside a method/function body
-		        // This prevents treating local variables as class-level declarations
 		        Var inMethodOrFunction As Boolean = False
 		        
-		        // LINE-BY-LINE PARSING LOOP
+		        // *** ADD THESE TRACKING VARIABLES HERE ***
+		        Var currentModule As String = ""  // Track current module context
+		        Var currentClass As String = ""   // Track current class context
+		        
 		        For Each line As String In lines
-		          line = line.Trim  // Remove leading/trailing whitespace for consistent parsing
+		          line = line.Trim
 		          
-		          // ====== CONSTANTS DETECTION ======
-		          // Parse Xojo constant declarations: "#tag Constant, Name = ConstantName, Value = ..."
+		          // ====== CONSTANTS ======
 		          If line.BeginsWith("#tag Constant, Name = ") Then
 		            Var parts() As String = line.Split("Name = ")
 		            If parts.LastIndex >= 1 Then
-		              Var namepart As String = parts(1)  // Get everything after "Name = "
-		              
-		              // Extract constant name (stops at comma before other attributes)
-		              // Example: "ConstantName, Type = Integer" -> extract "ConstantName"
+		              Var namepart As String = parts(1)
 		              Var commaPos As Integer = namepart.IndexOf(",")
 		              If commaPos > 0 Then
 		                Var constName As String = namepart.Left(commaPos).Trim
 		                
-		                // Avoid duplicate entries in results array
-		                If results.IndexOf("CONSTANT: " + constName) = -1 Then
-		                  results.Add("CONSTANT: " + constName)
-		                  System.DebugLog("Found constant: " + constName + " in " + item.Name)
+		                // *** MODIFIED: Add context to constant name ***
+		                Var fullName As String
+		                If currentModule <> "" Then
+		                  fullName = "CONSTANT: " + currentModule + "." + constName
+		                ElseIf currentClass <> "" Then
+		                  fullName = "CONSTANT: " + currentClass + "." + constName
+		                Else
+		                  fullName = "CONSTANT: " + constName
+		                End If
+		                
+		                If results.IndexOf(fullName) = -1 Then
+		                  results.Add(fullName)
+		                  System.DebugLog("Found constant: " + fullName + " in " + item.Name)
 		                End If
 		              End If
 		            End If
 		            
-		            // ====== CLASSES DETECTION ======
-		            // Parse class declarations with visibility modifiers
-		            // Must contain "Class " and begin with a visibility keyword to avoid false matches
+		            // ====== MODULES (ADD THIS BEFORE CLASSES) ======
+		          ElseIf line.Contains("Module ") And (line.BeginsWith("Module ") Or line.BeginsWith("Protected Module ") Or line.BeginsWith("Public Module ") Or line.BeginsWith("Private Module ") Or line.BeginsWith("Global Module ")) Then
+		            Var moduleName As String = ""
+		            If line.BeginsWith("Module ") Then
+		              moduleName = line.Replace("Module ", "")
+		            ElseIf line.BeginsWith("Protected Module ") Then
+		              moduleName = line.Replace("Protected Module ", "")
+		            ElseIf line.BeginsWith("Public Module ") Then
+		              moduleName = line.Replace("Public Module ", "")
+		            ElseIf line.BeginsWith("Private Module ") Then
+		              moduleName = line.Replace("Private Module ", "")
+		            ElseIf line.BeginsWith("Global Module ") Then
+		              moduleName = line.Replace("Global Module ", "")
+		            End If
+		            
+		            // Remove any inheritance or implements clauses
+		            Var spacePos As Integer = moduleName.IndexOf(" ")
+		            If spacePos > 0 Then
+		              moduleName = moduleName.Left(spacePos)
+		            End If
+		            
+		            If moduleName <> "" And results.IndexOf("MODULE: " + moduleName) = -1 Then
+		              results.Add("MODULE: " + moduleName)
+		              System.DebugLog("Found module: " + moduleName + " in " + item.Name)
+		              
+		              // *** SET CURRENT CONTEXT ***
+		              currentModule = moduleName
+		              currentClass = ""  // Clear class context when entering module
+		            End If
+		            
+		            // ====== CLASSES ======
 		          ElseIf line.Contains("Class ") And (line.BeginsWith("Protected Class ") Or line.BeginsWith("Public Class ") Or line.BeginsWith("Private Class ")) Then
 		            Var className As String = ""
-		            
-		            // Strip visibility keywords to extract clean class name
 		            If line.BeginsWith("Protected Class ") Then
 		              className = line.Replace("Protected Class ", "")
 		            ElseIf line.BeginsWith("Public Class ") Then
@@ -568,85 +594,129 @@ End
 		              className = line.Replace("Private Class ", "")
 		            End If
 		            
-		            // Filter out system classes and avoid duplicates
-		            // "App" is excluded because it's always implicitly used by Xojo runtime
-		            If className <> "" And className <> "App" And results.IndexOf("CLASS: " + className) = -1 Then
-		              results.Add("CLASS: " + className)
-		              System.DebugLog("Found class: " + className + " in " + item.Name)
+		            // Skip system classes that are always "used"
+		            If className <> "" And className <> "App" Then
+		              // *** MODIFIED: Add context to class name ***
+		              Var fullName As String
+		              If currentModule <> "" Then
+		                fullName = "CLASS: " + currentModule + "." + className
+		              Else
+		                fullName = "CLASS: " + className
+		              End If
+		              
+		              If results.IndexOf(fullName) = -1 Then
+		                results.Add(fullName)
+		                System.DebugLog("Found class: " + fullName + " in " + item.Name)
+		                
+		                // *** SET CURRENT CONTEXT ***
+		                currentClass = className
+		                // Note: Don't clear currentModule - classes can be inside modules
+		              End If
 		            End If
 		            
-		            // ====== METHODS AND FUNCTIONS DETECTION ======
-		            // Comprehensive parsing of method/function declarations with all visibility combinations
+		            // ====== METHODS AND FUNCTIONS ======
 		          ElseIf line.BeginsWith("Sub ") Or line.BeginsWith("Function ") Or _
 		            line.BeginsWith("Private Sub ") Or line.BeginsWith("Private Function ") Or _
 		            line.BeginsWith("Public Sub ") Or line.BeginsWith("Public Function ") Or _
 		            line.BeginsWith("Protected Sub ") Or line.BeginsWith("Protected Function ") Then
 		            
-		            // Use helper function to extract clean method name
 		            Var methodName As String = ExtractMethodName(line)
-		            
-		            // Filter out system event methods and avoid duplicates
-		            // System methods (Constructor, Paint, etc.) are excluded because they're automatically called
-		            If methodName <> "" And Not IsSystemMethod(methodName) And results.IndexOf("METHOD: " + methodName) = -1 Then
-		              results.Add("METHOD: " + methodName)
-		              System.DebugLog("Found method: " + methodName + " in " + item.Name)
+		            If methodName <> "" And Not IsSystemMethod(methodName) Then
+		              // *** MODIFIED: Add context to method name ***
+		              Var fullName As String
+		              If currentModule <> "" And currentClass <> "" Then
+		                fullName = "METHOD: " + currentModule + "." + currentClass + "." + methodName
+		              ElseIf currentModule <> "" Then
+		                fullName = "METHOD: " + currentModule + "." + methodName
+		              ElseIf currentClass <> "" Then
+		                fullName = "METHOD: " + currentClass + "." + methodName
+		              Else
+		                fullName = "METHOD: " + methodName
+		              End If
+		              
+		              If results.IndexOf(fullName) = -1 Then
+		                results.Add(fullName)
+		                System.DebugLog("Found method: " + fullName + " in " + item.Name)
+		              End If
 		            End If
-		            
-		            // Update context - we're now inside a method/function body
 		            inMethodOrFunction = True
 		            
-		            // ====== PROPERTIES DETECTION ======
-		            // Parse property declarations with all visibility modifiers
+		            // ====== PROPERTIES ======
 		          ElseIf line.BeginsWith("Property ") Or line.BeginsWith("Private Property ") Or  _
 		            line.BeginsWith("Public Property ") Or line.BeginsWith("Protected Property ") Then
 		            
-		            // Use helper function to extract clean property name
 		            Var propName As String = ExtractPropertyName(line)
-		            If propName <> "" And results.IndexOf("PROPERTY: " + propName) = -1 Then
-		              results.Add("PROPERTY: " + propName)
-		              System.DebugLog("Found property: " + propName + " in " + item.Name)
+		            If propName <> "" Then
+		              // *** MODIFIED: Add context to property name ***
+		              Var fullName As String
+		              If currentModule <> "" And currentClass <> "" Then
+		                fullName = "PROPERTY: " + currentModule + "." + currentClass + "." + propName
+		              ElseIf currentModule <> "" Then
+		                fullName = "PROPERTY: " + currentModule + "." + propName
+		              ElseIf currentClass <> "" Then
+		                fullName = "PROPERTY: " + currentClass + "." + propName
+		              Else
+		                fullName = "PROPERTY: " + propName
+		              End If
+		              
+		              If results.IndexOf(fullName) = -1 Then
+		                results.Add(fullName)
+		                System.DebugLog("Found property: " + fullName + " in " + item.Name)
+		              End If
 		            End If
 		            
-		            // ====== COMPUTED PROPERTIES DETECTION ======
-		            // Computed properties are defined using special Xojo tags
+		            // ====== COMPUTED PROPERTIES ======
 		          ElseIf line.BeginsWith("#tag ComputedProperty") Then
-		            // Mark context change - computed property definitions contain method-like code
-		            // The actual property name will be found in subsequent lines
 		            inMethodOrFunction = True
 		            
-		            // ====== EVENTS DETECTION ======
-		            // Event handlers are defined using Xojo's tag system
+		            // ====== EVENTS ======
 		          ElseIf line.BeginsWith("#tag Event") Then
-		            // Mark context change - events contain method-like code
-		            // Event method names will be detected by the method parsing logic above
 		            inMethodOrFunction = True
 		            
-		            // ====== CLASS-LEVEL VARIABLES DETECTION ======
-		            // Only detect variables at class level (not inside methods/functions)
-		            // This prevents local variables from being flagged as unused class members
+		            // ====== VARIABLES (at class/module level) ======
 		          ElseIf (line.BeginsWith("Dim ") Or line.BeginsWith("Var ")) And Not inMethodOrFunction Then
-		            // Use helper function to extract clean variable name
 		            Var varName As String = ExtractVariableName(line)
-		            If varName <> "" And results.IndexOf("VARIABLE: " + varName) = -1 Then
-		              results.Add("VARIABLE: " + varName)
-		              System.DebugLog("Found variable: " + varName + " in " + item.Name)
+		            If varName <> "" Then
+		              // *** MODIFIED: Add context to variable name ***
+		              Var fullName As String
+		              If currentModule <> "" And currentClass <> "" Then
+		                fullName = "VARIABLE: " + currentModule + "." + currentClass + "." + varName
+		              ElseIf currentModule <> "" Then
+		                fullName = "VARIABLE: " + currentModule + "." + varName
+		              ElseIf currentClass <> "" Then
+		                fullName = "VARIABLE: " + currentClass + "." + varName
+		              Else
+		                fullName = "VARIABLE: " + varName
+		              End If
+		              
+		              If results.IndexOf(fullName) = -1 Then
+		                results.Add(fullName)
+		                System.DebugLog("Found variable: " + fullName + " in " + item.Name)
+		              End If
 		            End If
 		            
-		            // ====== CONTEXT RESET ======
-		            // End tags indicate we're leaving method/function/event/property contexts
+		            // ====== END TAGS - Reset context ======
+		            // *** MODIFIED: Handle different end tags ***
+		          ElseIf line.BeginsWith("#tag EndModule") Then
+		            currentModule = ""
+		            currentClass = ""
+		            inMethodOrFunction = False
+		            
+		          ElseIf line.BeginsWith("#tag EndClass") Then
+		            currentClass = ""
+		            inMethodOrFunction = False
+		            
 		          ElseIf line.BeginsWith("#tag End") Or line = "End" Then
-		            // Reset context - we're back at class level
 		            inMethodOrFunction = False
 		          End If
 		        Next
 		        
-		        // ERROR HANDLING
-		        // Handle file I/O errors gracefully without crashing the application
 		      Catch e As IOException
 		        MessageBox("Error reading file: " + item.NativePath)
 		      End Try
 		    End If
 		  Next
+		  
 		End Sub
 	#tag EndMethod
 
@@ -677,10 +747,7 @@ End
 		      
 		      // FILE TYPE FILTERING - Extended to include menu files
 		      // Process all Xojo project files that might contain code references
-		    ElseIf item.Name.EndsWith(".xojo_code") Or _       // Class modules, regular modules
-		      item.Name.EndsWith(".xojo_window") Or _          // Window definitions (forms)
-		      item.Name.EndsWith(".xojo_form") Or _            // Legacy form files
-		      item.Name.EndsWith(".xojo_menu") Then            // Menu definition files (may reference constants)
+		    ElseIf IsXojoSourceFile(item) Then
 		      
 		      // FILE READING WITH ERROR HANDLING
 		      Try
@@ -794,6 +861,20 @@ End
 		              found = True
 		            End If
 		            
+		          Case "MODULE"
+		            // Modules are used when their methods/properties are called
+		            // Check for ModuleName.MethodName or ModuleName.PropertyName patterns
+		            If cleanedText.IndexOf(word + ".") >= 0 Then
+		              found = True
+		              whereFound = "module referenced in " + item.Name
+		            End If
+		            // Also check if module is referenced in Extends or Implements
+		            If cleanedText.IndexOf("Extends " + word) >= 0 Or _
+		              cleanedText.IndexOf("Implements " + word) >= 0 Then
+		              found = True
+		              whereFound = "module extended/implemented in " + item.Name
+		            End If
+		            
 		          Case "PROPERTY", "VARIABLE"
 		            // Class-level variables and properties
 		            If cleanedText.IndexOf("." + word) >= 0 Or _
@@ -866,6 +947,8 @@ End
 		Sub Pressed()
 		  
 		  Var projectFile As FolderItem = FolderItem.ShowOpenFileDialog(".xojo_project")
+		  Var unusedModules() As String
+		  
 		  If projectFile = Nil Then
 		    txtResults.Text = "No file selected."
 		    Return
@@ -908,6 +991,8 @@ End
 		    If usedItems.IndexOf(item) = -1 Then
 		      If item.BeginsWith("METHOD:") Then
 		        unusedMethods.Add(item)
+		      ElseIf item.BeginsWith("MODULE:") Then  // Add this
+		        unusedModules.Add(item)
 		      ElseIf item.BeginsWith("PROPERTY:") Then
 		        unusedProperties.Add(item)
 		      ElseIf item.BeginsWith("CONSTANT:") Then
@@ -924,7 +1009,9 @@ End
 		  Var output As String = "FINAL ANALYSIS RESULTS" + EndOfLine
 		  output = output + "Total items scanned: " + declaredItems.Count.ToString + EndOfLine + EndOfLine
 		  
-		  Var totalUnused As Integer = unusedMethods.Count + unusedProperties.Count + unusedConstants.Count + unusedClasses.Count + unusedVariables.Count
+		  Var totalUnused As Integer = unusedMethods.Count + unusedProperties.Count + _
+		  unusedConstants.Count + unusedClasses.Count + unusedVariables.Count + _
+		  unusedModules.Count  // Add modules to the count
 		  
 		  If totalUnused = 0 Then
 		    output = output + "No unused items found" + EndOfLine
