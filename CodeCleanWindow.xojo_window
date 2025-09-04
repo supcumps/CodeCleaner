@@ -64,7 +64,7 @@ Begin DesktopWindow CodeCleanWindow
       TabPanelIndex   =   0
       TextColor       =   &c00000000
       Tooltip         =   ""
-      Top             =   37
+      Top             =   20
       Transparent     =   False
       Underline       =   False
       Value           =   False
@@ -151,10 +151,74 @@ Begin DesktopWindow CodeCleanWindow
       _mName          =   ""
       _mPanelIndex    =   0
    End
+   Begin DesktopBevelButton ExportButton
+      AllowAutoDeactivate=   True
+      AllowFocus      =   True
+      AllowTabStop    =   True
+      BackgroundColor =   &c00000000
+      BevelStyle      =   0
+      Bold            =   False
+      ButtonStyle     =   0
+      Caption         =   "Export Results"
+      CaptionAlignment=   3
+      CaptionDelta    =   0
+      CaptionPosition =   1
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      HasBackgroundColor=   False
+      Height          =   22
+      Icon            =   0
+      IconAlignment   =   0
+      IconDeltaX      =   0
+      IconDeltaY      =   0
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   221
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MenuStyle       =   0
+      Scope           =   2
+      TabIndex        =   3
+      TabPanelIndex   =   0
+      TextColor       =   &c00000000
+      Tooltip         =   ""
+      Top             =   54
+      Transparent     =   False
+      Underline       =   False
+      Value           =   False
+      Visible         =   True
+      Width           =   179
+   End
 End
 #tag EndDesktopWindow
 
 #tag WindowCode
+	#tag Method, Flags = &h21
+		Private Function BuildFullName(itemType As String, itemName As String, currentModule As String, currentClass As String) As String
+		  // Private Function BuildFullName(itemType As String, itemName As String, currentModule As String, currentClass As String) As String
+		  Var fullName As String = itemType + ": "
+		  
+		  If currentModule <> "" And currentClass <> "" Then
+		    fullName = fullName + currentModule + "." + currentClass + "." + itemName
+		  ElseIf currentModule <> "" Then
+		    fullName = fullName + currentModule + "." + itemName
+		  ElseIf currentClass <> "" Then
+		    fullName = fullName + currentClass + "." + itemName
+		  Else
+		    fullName = fullName + itemName
+		  End If
+		  
+		  Return fullName
+		  
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub DebugProjectFiles(folder As FolderItem)
 		  'This code Implements a recursive file scanner that processes Xojo project files, 
@@ -413,6 +477,63 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function IsClassDeclaration(line As String) As Boolean
+		  // Private Function IsClassDeclaration(line As String) As Boolean
+		  Return line.Contains("Class ") And _
+		  (line.BeginsWith("Protected Class ") Or _
+		  line.BeginsWith("Public Class ") Or _
+		  line.BeginsWith("Private Class ") Or _
+		  line.BeginsWith("Class "))
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsInterfaceDeclaration(line As String) As Boolean
+		  // Private Function IsInterfaceDeclaration(line As String) As Boolean
+		  Return line.Contains("Interface ") And _
+		  (line.BeginsWith("Interface ") Or _
+		  line.BeginsWith("Protected Interface ") Or _
+		  line.BeginsWith("Public Interface ") Or _
+		  line.BeginsWith("Private Interface "))
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsMethodOrFunctionDeclaration(line As String) As Boolean
+		  // Private Function IsMethodOrFunctionDeclaration(line As String) As Boolean
+		  Return line.BeginsWith("Sub ") Or line.BeginsWith("Function ") Or _
+		  line.BeginsWith("Private Sub ") Or line.BeginsWith("Private Function ") Or _
+		  line.BeginsWith("Public Sub ") Or line.BeginsWith("Public Function ") Or _
+		  line.BeginsWith("Protected Sub ") Or line.BeginsWith("Protected Function ")
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsModuleDeclaration(line As String) As Boolean
+		  // Private Function IsModuleDeclaration(line As String) As Boolean
+		  Return line.Contains("Module ") And _
+		  (line.BeginsWith("Module ") Or _
+		  line.BeginsWith("Protected Module ") Or _
+		  line.BeginsWith("Public Module ") Or _
+		  line.BeginsWith("Private Module ") Or _
+		  line.BeginsWith("Global Module "))
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsPropertyDeclaration(line As String) As Boolean
+		  Return line.BeginsWith("Property ") Or _
+		  line.BeginsWith("Private Property ") Or _
+		  line.BeginsWith("Public Property ") Or _
+		  line.BeginsWith("Protected Property ")
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function IsSystemMethod(methodName As String) As Boolean
 		  'This Function Is crucial For the accuracy Of the CodeCleaner tool. 
 		  'It acts As a "whitelist" filter that prevents False positives by recognizing methods that are automatically called by the Xojo framework, 
@@ -482,239 +603,326 @@ End
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function IsVariableDeclaration(line As String) As Boolean
+		  // Private Function IsVariableDeclaration(line As String) As Boolean
+		  Return line.BeginsWith("Dim ") Or line.BeginsWith("Var ")
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function IsXojoSourceFile(item As FolderItem) As Boolean
-		  // Check if this is a Xojo source file that should be scanned
+		  If item = Nil Or Not item.Exists Then Return False
+		  
 		  Var name As String = item.Name.Lowercase
 		  
 		  Return name.EndsWith(".xojo_code") Or _
 		  name.EndsWith(".xojo_window") Or _
 		  name.EndsWith(".xojo_form") Or _
-		  name.EndsWith(".xojo_menu") Or _
 		  name.EndsWith(".xojo_mobile_screen") Or _
 		  name.EndsWith(".xojo_mobile_container") Or _
 		  name.EndsWith(".xojo_ios_view") Or _
 		  name.EndsWith(".xojo_ios_screen") Or _
+		  name.EndsWith(".xojo_menu") Or _
 		  name.EndsWith(".xojo_toolbar") Or _
-		  name.Contains(".xojo_") // Catch-all for any xojo_ files
+		  name.Contains(".xojo_")  // Catch-all for any xojo_ files
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ParseFileContent(content As String, fileName As String, ByRef results() As String)
+		  Var lines() As String = content.Split(EndOfLine)
+		  
+		  // Context tracking variables
+		  Var currentModule As String = ""
+		  Var currentClass As String = ""
+		  Var currentInterface As String = ""
+		  Var inMethodOrFunction As Boolean = False
+		  
+		  For Each line As String In lines
+		    line = line.Trim
+		    
+		    // Skip empty lines
+		    If line = "" Then Continue
+		    
+		    // Process based on line content
+		    If line.BeginsWith("#tag Constant") Then
+		      ProcessConstantDeclaration(line, currentModule, currentClass, fileName, results)
+		      
+		    ElseIf IsModuleDeclaration(line) Then
+		      currentModule = ProcessModuleDeclaration(line, fileName, results)
+		      currentClass = ""  // Reset class when entering module
+		      currentInterface = ""
+		      
+		    ElseIf IsInterfaceDeclaration(line) Then
+		      currentInterface = ProcessInterfaceDeclaration(line, currentModule, fileName, results)
+		      currentClass = currentInterface  // Interfaces work like classes for context
+		      
+		    ElseIf IsClassDeclaration(line) Then
+		      currentClass = ProcessClassDeclaration(line, currentModule, fileName, results)
+		      currentInterface = ""
+		      
+		    ElseIf IsMethodOrFunctionDeclaration(line) Then
+		      ProcessMethodDeclaration(line, currentModule, currentClass, fileName, results)
+		      inMethodOrFunction = True
+		      
+		    ElseIf IsPropertyDeclaration(line) Then
+		      ProcessPropertyDeclaration(line, currentModule, currentClass, fileName, results)
+		      
+		    ElseIf IsVariableDeclaration(line) And Not inMethodOrFunction Then
+		      ProcessVariableDeclaration(line, currentModule, currentClass, fileName, results)
+		      
+		    ElseIf line.BeginsWith("#tag ComputedProperty") Or line.BeginsWith("#tag Event") Then
+		      inMethodOrFunction = True
+		      
+		    ElseIf line.BeginsWith("#tag EndModule") Then
+		      currentModule = ""
+		      currentClass = ""
+		      currentInterface = ""
+		      inMethodOrFunction = False
+		      
+		    ElseIf line.BeginsWith("#tag EndClass") Then
+		      currentClass = ""
+		      currentInterface = ""
+		      inMethodOrFunction = False
+		      
+		    ElseIf line.BeginsWith("#tag EndInterface") Then
+		      currentClass = ""
+		      currentInterface = ""
+		      inMethodOrFunction = False
+		      
+		    ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
+		      inMethodOrFunction = False
+		    End If
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ProcessClassDeclaration(line As String, currentModule As String, fileName As String, ByRef results() As String) As String
+		  // Private Function ProcessClassDeclaration(line As String, currentModule As String, fileName As String, ByRef results() As String) As String
+		  Var className As String = line
+		  
+		  // Remove visibility modifiers
+		  className = className.Replace("Protected Class ", "")
+		  className = className.Replace("Public Class ", "")
+		  className = className.Replace("Private Class ", "")
+		  className = className.Replace("Class ", "")
+		  
+		  // Remove inheritance/implements clauses
+		  Var spacePos As Integer = className.IndexOf(" ")
+		  If spacePos > 0 Then
+		    className = className.Left(spacePos)
+		  End If
+		  
+		  className = className.Trim
+		  
+		  // Skip system classes
+		  If className <> "" And className <> "App" Then
+		    Var fullName As String
+		    If currentModule <> "" Then
+		      fullName = "CLASS: " + currentModule + "." + className
+		    Else
+		      fullName = "CLASS: " + className
+		    End If
+		    
+		    If results.IndexOf(fullName) = -1 Then
+		      results.Add(fullName)
+		      System.DebugLog("Found class: " + fullName + " in " + fileName)
+		    End If
+		  End If
+		  
+		  Return className
 		  
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub ProcessConstantDeclaration(line As String, currentModule As String, currentClass As String, fileName As String, ByRef results() As String)
+		  // rivate Sub ProcessConstantDeclaration(line As String, currentModule As String, currentClass As String, fileName As String, ByRef results() As String)
+		  Var parts() As String = line.Split("Name = ")
+		  If parts.LastIndex >= 1 Then
+		    Var namepart As String = parts(1)
+		    Var commaPos As Integer = namepart.IndexOf(",")
+		    If commaPos > 0 Then
+		      Var constName As String = namepart.Left(commaPos).Trim
+		      Var fullName As String = BuildFullName("CONSTANT", constName, currentModule, currentClass)
+		      
+		      If results.IndexOf(fullName) = -1 Then
+		        results.Add(fullName)
+		        System.DebugLog("Found constant: " + fullName + " in " + fileName)
+		      End If
+		    End If
+		  End If
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ProcessInterfaceDeclaration(line As String, currentModule As String, fileName As String, ByRef results() As String) As String
+		  // Private Function ProcessInterfaceDeclaration(line As String, currentModule As String, fileName As String, ByRef results() As String) As String
+		  Var interfaceName As String = line
+		  
+		  // Remove visibility modifiers
+		  interfaceName = interfaceName.Replace("Protected Interface ", "")
+		  interfaceName = interfaceName.Replace("Public Interface ", "")
+		  interfaceName = interfaceName.Replace("Private Interface ", "")
+		  interfaceName = interfaceName.Replace("Interface ", "")
+		  
+		  // Remove inheritance clauses
+		  Var spacePos As Integer = interfaceName.IndexOf(" ")
+		  If spacePos > 0 Then
+		    interfaceName = interfaceName.Left(spacePos)
+		  End If
+		  
+		  interfaceName = interfaceName.Trim
+		  
+		  If interfaceName <> "" Then
+		    Var fullName As String
+		    If currentModule <> "" Then
+		      fullName = "INTERFACE: " + currentModule + "." + interfaceName
+		    Else
+		      fullName = "INTERFACE: " + interfaceName
+		    End If
+		    
+		    If results.IndexOf(fullName) = -1 Then
+		      results.Add(fullName)
+		      System.DebugLog("Found interface: " + fullName + " in " + fileName)
+		    End If
+		  End If
+		  
+		  Return interfaceName
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ProcessMethodDeclaration(line As String, currentModule As String, currentClass As String, fileName As String, ByRef results() As String)
+		  // Private Sub ProcessMethodDeclaration(line As String, currentModule As String, currentClass As String, fileName As String, ByRef results() As String)
+		  Var methodName As String = ExtractMethodName(line)
+		  
+		  If methodName <> "" And Not IsSystemMethod(methodName) Then
+		    Var fullName As String = BuildFullName("METHOD", methodName, currentModule, currentClass)
+		    
+		    If results.IndexOf(fullName) = -1 Then
+		      results.Add(fullName)
+		      System.DebugLog("Found method: " + fullName + " in " + fileName)
+		    End If
+		  End If
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function ProcessModuleDeclaration(line As String, fileName As String, ByRef results() As String) As String
+		  Var moduleName As String = line
+		  
+		  // Remove visibility modifiers
+		  moduleName = moduleName.Replace("Protected Module ", "")
+		  moduleName = moduleName.Replace("Public Module ", "")
+		  moduleName = moduleName.Replace("Private Module ", "")
+		  moduleName = moduleName.Replace("Global Module ", "")
+		  moduleName = moduleName.Replace("Module ", "")
+		  
+		  // Remove inheritance/implements clauses
+		  Var spacePos As Integer = moduleName.IndexOf(" ")
+		  If spacePos > 0 Then
+		    moduleName = moduleName.Left(spacePos)
+		  End If
+		  
+		  moduleName = moduleName.Trim
+		  
+		  If moduleName <> "" Then
+		    Var fullName As String = "MODULE: " + moduleName
+		    If results.IndexOf(fullName) = -1 Then
+		      results.Add(fullName)
+		      System.DebugLog("Found module: " + fullName + " in " + fileName)
+		    End If
+		  End If
+		  
+		  Return moduleName
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ProcessPropertyDeclaration(line As String, currentModule As String, currentClass As String, fileName As String, ByRef results() As String)
+		  // Private Sub ProcessPropertyDeclaration(line As String, currentModule As String, currentClass As String, fileName As String, ByRef results() As String)
+		  Var propName As String = ExtractPropertyName(line)
+		  
+		  If propName <> "" Then
+		    Var fullName As String = BuildFullName("PROPERTY", propName, currentModule, currentClass)
+		    
+		    If results.IndexOf(fullName) = -1 Then
+		      results.Add(fullName)
+		      System.DebugLog("Found property: " + fullName + " in " + fileName)
+		    End If
+		  End If
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ProcessSourceFile((item As FolderItem, ByRef results() As String))
+		  
+		  // Private Sub ProcessSourceFile(item As FolderItem, ByRef results() As String)
+		  Try
+		    // Read file content
+		    Var tis As TextInputStream = TextInputStream.Open(item)
+		    If tis = Nil Then Return
+		    
+		    Var content As String = tis.ReadAll
+		    tis.Close
+		    
+		    // Parse the content
+		    ParseFileContent(content, item.Name, results)
+		    
+		  Catch e As IOException
+		    System.DebugLog("Error reading file: " + item.Name + " - " + e.Message)
+		  End Try
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ProcessVariableDeclaration(line As String, currentModule As String, currentClass As String, fileName As String, ByRef results() As String)
+		  // Private Sub ProcessVariableDeclaration(line As String, currentModule As String, currentClass As String, fileName As String, ByRef results() As String)
+		  Var varName As String = ExtractVariableName(line)
+		  
+		  If varName <> "" Then
+		    Var fullName As String = BuildFullName("VARIABLE", varName, currentModule, currentClass)
+		    
+		    If results.IndexOf(fullName) = -1 Then
+		      results.Add(fullName)
+		      System.DebugLog("Found variable: " + fullName + " in " + fileName)
+		    End If
+		  End If
+		  
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub ScanProjectForDeclarations(folder As FolderItem, ByRef results() As String)
-		  // Sub ScanProjectForDeclarations(folder As FolderItem, ByRef results() As String)
+		  //Sub ScanProjectForDeclarations(folder As FolderItem, ByRef results() As String)
+		  // Validate input
+		  If folder = Nil Or Not folder.Exists Then Return
+		  
+		  // Process each item in the folder
 		  For Each item As FolderItem In folder.Children
-		    If item.IsFolder Then
-		      ScanProjectForDeclarations(item, results)
-		    ElseIf item.Name.EndsWith(".xojo_code") Or _
-		      item.Name.EndsWith(".xojo_window") Or _
-		      item.Name.EndsWith(".xojo_form") Or _
-		      item.Name.EndsWith(".xojo_mobile_screen") Or _
-		      item.Name.EndsWith(".xojo_mobile_container") Then
+		    Try
+		      If item = Nil Then Continue
 		      
-		      Try
-		        Var tis As TextInputStream = TextInputStream.Open(item)
-		        Var content As String = tis.ReadAll
-		        tis.Close
-		        
-		        Var lines() As String = content.Split(EndOfLine)
-		        Var inMethodOrFunction As Boolean = False
-		        
-		        // *** ADD THESE TRACKING VARIABLES HERE ***
-		        Var currentModule As String = ""  // Track current module context
-		        Var currentClass As String = ""   // Track current class context
-		        
-		        For Each line As String In lines
-		          line = line.Trim
-		          
-		          // ====== CONSTANTS ======
-		          If line.BeginsWith("#tag Constant, Name = ") Then
-		            Var parts() As String = line.Split("Name = ")
-		            If parts.LastIndex >= 1 Then
-		              Var namepart As String = parts(1)
-		              Var commaPos As Integer = namepart.IndexOf(",")
-		              If commaPos > 0 Then
-		                Var constName As String = namepart.Left(commaPos).Trim
-		                
-		                // *** MODIFIED: Add context to constant name ***
-		                Var fullName As String
-		                If currentModule <> "" Then
-		                  fullName = "CONSTANT: " + currentModule + "." + constName
-		                ElseIf currentClass <> "" Then
-		                  fullName = "CONSTANT: " + currentClass + "." + constName
-		                Else
-		                  fullName = "CONSTANT: " + constName
-		                End If
-		                
-		                If results.IndexOf(fullName) = -1 Then
-		                  results.Add(fullName)
-		                  System.DebugLog("Found constant: " + fullName + " in " + item.Name)
-		                End If
-		              End If
-		            End If
-		            
-		            // ====== MODULES (ADD THIS BEFORE CLASSES) ======
-		          ElseIf line.Contains("Module ") And (line.BeginsWith("Module ") Or line.BeginsWith("Protected Module ") Or line.BeginsWith("Public Module ") Or line.BeginsWith("Private Module ") Or line.BeginsWith("Global Module ")) Then
-		            Var moduleName As String = ""
-		            If line.BeginsWith("Module ") Then
-		              moduleName = line.Replace("Module ", "")
-		            ElseIf line.BeginsWith("Protected Module ") Then
-		              moduleName = line.Replace("Protected Module ", "")
-		            ElseIf line.BeginsWith("Public Module ") Then
-		              moduleName = line.Replace("Public Module ", "")
-		            ElseIf line.BeginsWith("Private Module ") Then
-		              moduleName = line.Replace("Private Module ", "")
-		            ElseIf line.BeginsWith("Global Module ") Then
-		              moduleName = line.Replace("Global Module ", "")
-		            End If
-		            
-		            // Remove any inheritance or implements clauses
-		            Var spacePos As Integer = moduleName.IndexOf(" ")
-		            If spacePos > 0 Then
-		              moduleName = moduleName.Left(spacePos)
-		            End If
-		            
-		            If moduleName <> "" And results.IndexOf("MODULE: " + moduleName) = -1 Then
-		              results.Add("MODULE: " + moduleName)
-		              System.DebugLog("Found module: " + moduleName + " in " + item.Name)
-		              
-		              // *** SET CURRENT CONTEXT ***
-		              currentModule = moduleName
-		              currentClass = ""  // Clear class context when entering module
-		            End If
-		            
-		            // ====== CLASSES ======
-		          ElseIf line.Contains("Class ") And (line.BeginsWith("Protected Class ") Or line.BeginsWith("Public Class ") Or line.BeginsWith("Private Class ")) Then
-		            Var className As String = ""
-		            If line.BeginsWith("Protected Class ") Then
-		              className = line.Replace("Protected Class ", "")
-		            ElseIf line.BeginsWith("Public Class ") Then
-		              className = line.Replace("Public Class ", "")
-		            ElseIf line.BeginsWith("Private Class ") Then
-		              className = line.Replace("Private Class ", "")
-		            End If
-		            
-		            // Skip system classes that are always "used"
-		            If className <> "" And className <> "App" Then
-		              // *** MODIFIED: Add context to class name ***
-		              Var fullName As String
-		              If currentModule <> "" Then
-		                fullName = "CLASS: " + currentModule + "." + className
-		              Else
-		                fullName = "CLASS: " + className
-		              End If
-		              
-		              If results.IndexOf(fullName) = -1 Then
-		                results.Add(fullName)
-		                System.DebugLog("Found class: " + fullName + " in " + item.Name)
-		                
-		                // *** SET CURRENT CONTEXT ***
-		                currentClass = className
-		                // Note: Don't clear currentModule - classes can be inside modules
-		              End If
-		            End If
-		            
-		            // ====== METHODS AND FUNCTIONS ======
-		          ElseIf line.BeginsWith("Sub ") Or line.BeginsWith("Function ") Or _
-		            line.BeginsWith("Private Sub ") Or line.BeginsWith("Private Function ") Or _
-		            line.BeginsWith("Public Sub ") Or line.BeginsWith("Public Function ") Or _
-		            line.BeginsWith("Protected Sub ") Or line.BeginsWith("Protected Function ") Then
-		            
-		            Var methodName As String = ExtractMethodName(line)
-		            If methodName <> "" And Not IsSystemMethod(methodName) Then
-		              // *** MODIFIED: Add context to method name ***
-		              Var fullName As String
-		              If currentModule <> "" And currentClass <> "" Then
-		                fullName = "METHOD: " + currentModule + "." + currentClass + "." + methodName
-		              ElseIf currentModule <> "" Then
-		                fullName = "METHOD: " + currentModule + "." + methodName
-		              ElseIf currentClass <> "" Then
-		                fullName = "METHOD: " + currentClass + "." + methodName
-		              Else
-		                fullName = "METHOD: " + methodName
-		              End If
-		              
-		              If results.IndexOf(fullName) = -1 Then
-		                results.Add(fullName)
-		                System.DebugLog("Found method: " + fullName + " in " + item.Name)
-		              End If
-		            End If
-		            inMethodOrFunction = True
-		            
-		            // ====== PROPERTIES ======
-		          ElseIf line.BeginsWith("Property ") Or line.BeginsWith("Private Property ") Or  _
-		            line.BeginsWith("Public Property ") Or line.BeginsWith("Protected Property ") Then
-		            
-		            Var propName As String = ExtractPropertyName(line)
-		            If propName <> "" Then
-		              // *** MODIFIED: Add context to property name ***
-		              Var fullName As String
-		              If currentModule <> "" And currentClass <> "" Then
-		                fullName = "PROPERTY: " + currentModule + "." + currentClass + "." + propName
-		              ElseIf currentModule <> "" Then
-		                fullName = "PROPERTY: " + currentModule + "." + propName
-		              ElseIf currentClass <> "" Then
-		                fullName = "PROPERTY: " + currentClass + "." + propName
-		              Else
-		                fullName = "PROPERTY: " + propName
-		              End If
-		              
-		              If results.IndexOf(fullName) = -1 Then
-		                results.Add(fullName)
-		                System.DebugLog("Found property: " + fullName + " in " + item.Name)
-		              End If
-		            End If
-		            
-		            // ====== COMPUTED PROPERTIES ======
-		          ElseIf line.BeginsWith("#tag ComputedProperty") Then
-		            inMethodOrFunction = True
-		            
-		            // ====== EVENTS ======
-		          ElseIf line.BeginsWith("#tag Event") Then
-		            inMethodOrFunction = True
-		            
-		            // ====== VARIABLES (at class/module level) ======
-		          ElseIf (line.BeginsWith("Dim ") Or line.BeginsWith("Var ")) And Not inMethodOrFunction Then
-		            Var varName As String = ExtractVariableName(line)
-		            If varName <> "" Then
-		              // *** MODIFIED: Add context to variable name ***
-		              Var fullName As String
-		              If currentModule <> "" And currentClass <> "" Then
-		                fullName = "VARIABLE: " + currentModule + "." + currentClass + "." + varName
-		              ElseIf currentModule <> "" Then
-		                fullName = "VARIABLE: " + currentModule + "." + varName
-		              ElseIf currentClass <> "" Then
-		                fullName = "VARIABLE: " + currentClass + "." + varName
-		              Else
-		                fullName = "VARIABLE: " + varName
-		              End If
-		              
-		              If results.IndexOf(fullName) = -1 Then
-		                results.Add(fullName)
-		                System.DebugLog("Found variable: " + fullName + " in " + item.Name)
-		              End If
-		            End If
-		            
-		            // ====== END TAGS - Reset context ======
-		            // *** MODIFIED: Handle different end tags ***
-		          ElseIf line.BeginsWith("#tag EndModule") Then
-		            currentModule = ""
-		            currentClass = ""
-		            inMethodOrFunction = False
-		            
-		          ElseIf line.BeginsWith("#tag EndClass") Then
-		            currentClass = ""
-		            inMethodOrFunction = False
-		            
-		          ElseIf line.BeginsWith("#tag End") Or line = "End" Then
-		            inMethodOrFunction = False
-		          End If
-		        Next
-		        
-		      Catch e As IOException
-		        MessageBox("Error reading file: " + item.NativePath)
-		      End Try
-		    End If
+		      If item.IsFolder Then
+		        // Recursively scan subfolders
+		        ScanProjectForDeclarations(item, results)
+		      ElseIf IsXojoSourceFile(item) Then
+		        // Process Xojo source files
+		        ProcessSourceFile(item, results)
+		      End If
+		      
+		    Catch e As RuntimeException
+		      System.DebugLog("Error processing item: " + If(item <> Nil, item.Name, "unknown") + " - " + e.Message)
+		      Continue
+		    End Try
 		  Next
 		  
 		End Sub
@@ -824,18 +1032,23 @@ End
 		            End If
 		            
 		          Case "METHOD"
-		            // Methods called with parentheses
-		            If cleanedText.IndexOf(word + "(") >= 0 Then
+		            // Extract the actual method name from the full path
+		            Var methodParts() As String = word.Split(".")
+		            Var actualMethodName As String = methodParts(methodParts.LastIndex)
+		            
+		            // Check for direct calls
+		            If cleanedText.IndexOf(actualMethodName + "(") >= 0 Then
 		              found = True
 		              whereFound = "called in " + item.Name
-		              // Also check for method references without parentheses (like AddressOf)
-		            ElseIf cleanedText.IndexOf("AddressOf " + word) >= 0 Then
+		              // Check for qualified calls (Module.Method or Class.Method)
+		            ElseIf cleanedText.IndexOf(word + "(") >= 0 Then
+		              found = True
+		              whereFound = "fully qualified call in " + item.Name
+		              // AddressOf references
+		            ElseIf cleanedText.IndexOf("AddressOf " + actualMethodName) >= 0 Or _
+		              cleanedText.IndexOf("AddressOf " + word) >= 0 Then
 		              found = True
 		              whereFound = "referenced via AddressOf in " + item.Name
-		              // Check if it appears in other contexts (but be more careful)
-		            ElseIf cleanedText.IndexOf(" " + word + " ") >= 0 Then
-		              found = True
-		              whereFound = "possibly referenced in " + item.Name + " (needs verification)"
 		            End If
 		            
 		          Case "CLASS"
@@ -909,6 +1122,18 @@ End
 		              End If
 		            End If
 		            
+		          Case "INTERFACE"
+		            // Interfaces are used when implemented
+		            If cleanedText.IndexOf("Implements " + word) >= 0 Then
+		              found = True
+		              whereFound = "implemented in " + item.Name
+		            End If
+		            // Check if interface type is used in method signatures or properties
+		            If cleanedText.IndexOf("As " + word) >= 0 Then
+		              found = True  
+		              whereFound = "used as type in " + item.Name
+		            End If
+		            
 		          Case Else
 		            // Generic detection for other types
 		            If cleanedText.IndexOf(word + "(") >= 0 Or _
@@ -936,6 +1161,8 @@ End
 		      End Try
 		    End If
 		  Next
+		  
+		  
 		End Sub
 	#tag EndMethod
 
@@ -948,6 +1175,7 @@ End
 		  
 		  Var projectFile As FolderItem = FolderItem.ShowOpenFileDialog(".xojo_project")
 		  Var unusedModules() As String
+		  Var unusedInterfaces() As String
 		  
 		  If projectFile = Nil Then
 		    txtResults.Text = "No file selected."
@@ -1001,6 +1229,8 @@ End
 		        unusedClasses.Add(item)
 		      ElseIf item.BeginsWith("VARIABLE:") Then
 		        unusedVariables.Add(item)
+		      ElseIf item.BeginsWith("INTERFACE:") Then
+		        unusedInterfaces.Add(item)
 		      End If
 		    End If
 		  Next
@@ -1009,9 +1239,10 @@ End
 		  Var output As String = "FINAL ANALYSIS RESULTS" + EndOfLine
 		  output = output + "Total items scanned: " + declaredItems.Count.ToString + EndOfLine + EndOfLine
 		  
+		  // Update the total count:
 		  Var totalUnused As Integer = unusedMethods.Count + unusedProperties.Count + _
 		  unusedConstants.Count + unusedClasses.Count + unusedVariables.Count + _
-		  unusedModules.Count  // Add modules to the count
+		  unusedModules.Count + unusedInterfaces.Count
 		  
 		  If totalUnused = 0 Then
 		    output = output + "No unused items found" + EndOfLine
@@ -1056,10 +1287,143 @@ End
 		        output = output + "  • " + item.Replace("VARIABLE: ", "") + EndOfLine
 		      Next
 		    End If
+		    
+		    If unusedModules.Count > 0 Then
+		      output = output + "UNUSED MODULES (" + unusedModules.Count.ToString + "):" + EndOfLine
+		      For Each item As String In unusedModules
+		        output = output + "  • " + item.Replace("MODULE: ", "") + EndOfLine
+		      Next
+		      output = output + EndOfLine
+		    End If
+		    
+		    If unusedInterfaces.Count > 0 Then
+		      output = output + "UNUSED INTERFACES (" + unusedInterfaces.Count.ToString + "):" + EndOfLine
+		      For Each item As String In unusedInterfaces
+		        output = output + "  • " + item.Replace("INTERFACE: ", "") + EndOfLine
+		      Next
+		      // output = output + EndOfLine
+		    End If
+		    
+		    
 		  End If
 		  
+		  
+		  // ============ ADD THE SUMMARY SECTION HERE ============
+		  output = output + EndOfLine + EndOfLine  // Extra spacing
+		  output = output + "═══════════════════════════════════════" + EndOfLine
+		  output = output + "SUMMARY BY MODULE/CLASS:" + EndOfLine
+		  output = output + "═══════════════════════════════════════" + EndOfLine + EndOfLine
+		  
+		  // Create a dictionary to count unused items per module/class
+		  Var contextCounts As New Dictionary
+		  Var standaloneCount As Integer = 0
+		  
+		  
+		  // Process all unused items to count by context
+		  Var allUnusedItems() As String
+		  
+		  // Add all items from each array
+		  For Each item As String In unusedMethods
+		    allUnusedItems.Add(item)
+		  Next
+		  For Each item As String In unusedProperties
+		    allUnusedItems.Add(item)
+		  Next
+		  For Each item As String In unusedConstants
+		    allUnusedItems.Add(item)
+		  Next
+		  For Each item As String In unusedVariables
+		    allUnusedItems.Add(item)
+		  Next
+		  For Each item As String In unusedClasses
+		    allUnusedItems.Add(item)
+		  Next
+		  For Each item As String In unusedInterfaces
+		    allUnusedItems.Add(item)
+		  Next
+		  
+		  For Each item As String In allUnusedItems
+		    // Remove the type prefix (METHOD:, PROPERTY:, etc.)
+		    Var colonPos As Integer = item.IndexOf(": ")
+		    If colonPos > 0 Then
+		      Var itemPath As String = item.Middle(colonPos + 2)  // Get everything after ": "
+		      Var parts() As String = itemPath.Split(".")
+		      
+		      If parts.Count > 1 Then
+		        // Has module or class context
+		        Var contextName As String = parts(0)  // First part is module or class
+		        If parts.Count > 2 Then
+		          // Has both module and class (module.class.item)
+		          contextName = parts(0) + "." + parts(1)
+		        End If
+		        
+		        If contextCounts.HasKey(contextName) Then
+		          contextCounts.Value(contextName) = contextCounts.Value(contextName) + 1
+		        Else
+		          contextCounts.Value(contextName) = 1
+		        End If
+		      Else
+		        // Standalone item (no module/class context)
+		        standaloneCount = standaloneCount + 1
+		      End If
+		    End If
+		  Next
+		  
+		  // Sort the keys for better readability
+		  Var sortedKeys() As String
+		  For Each key As String In contextCounts.Keys
+		    sortedKeys.Add(key)
+		  Next
+		  sortedKeys.Sort
+		  
+		  // Output the summary
+		  For Each key As String In sortedKeys
+		    Var count As Integer = contextCounts.Value(key)
+		    Var itemText As String = If(count = 1, "item", "items")
+		    output = output + "  📁 " + key + ": " + count.ToString + " unused " + itemText + EndOfLine
+		  Next
+		  For Each item As String In unusedModules
+		    allUnusedItems.Add(item)
+		  Next
+		  
+		  If standaloneCount > 0 Then
+		    Var itemText As String = If(standaloneCount = 1, "item", "items")
+		    output = output + "  📄 [Global/Standalone]: " + standaloneCount.ToString + " unused " + itemText + EndOfLine
+		  End If
+		  
+		  output = output + EndOfLine
+		  output = output + "═══════════════════════════════════════" + EndOfLine
+		  output = output + "Total unused items: " + totalUnused.ToString + EndOfLine
+		  output = output + "═══════════════════════════════════════" + EndOfLine
+		  // ============ END OF SUMMARY SECTION ============
+		  
+		  
+		  // Finally, display everything
 		  txtResults.Text = txtResults.Text + output
 		  
+		  
+		  
+		  
+		  
+		  
+		  
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events ExportButton
+	#tag Event
+		Sub Pressed()
+		  Var saveFile As FolderItem = FolderItem.ShowSaveFileDialog("", "UnusedCode_" + DateTime.Now.ToString + ".txt")
+		  If saveFile <> Nil Then
+		    Try
+		      Var tos As TextOutputStream = TextOutputStream.Create(saveFile)
+		      tos.Write(txtResults.Text)
+		      tos.Close
+		      MessageBox("Results exported successfully!")
+		    Catch e As IOException
+		      MessageBox("Error saving file: " + e.Message)
+		    End Try
+		  End If
 		End Sub
 	#tag EndEvent
 #tag EndEvents
