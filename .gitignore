@@ -1,8 +1,10 @@
 # Ignore ZIP files
 *.zip
 
-# Ignore PNG files
+# Ignore PNG, PDF, TXT files
 *.png
+*.PDF
+*.TXT
 
 # Common Xojo build artifacts (optional - you may want these)
 Builds - */
