@@ -1,6 +1,27 @@
 #tag Class
 Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h21
+		Private Sub AnalyzeFileForRelationships(content As String)
+		  // Track context and find method calls
+		  
+		  Var lines() As String = content.Split(EndOfLine)
+		  Var currentModule As String = ""
+		  Var currentClass As String = ""
+		  Var currentMethodFullPath As String = ""
+		  Var inMethod As Boolean = False
+		  
+		  For Each line As String In lines
+		    line = line.Trim
+		    
+		    If line.Trim = "" Then Continue
+		    
+		    ProcessLineForRelationships(line, currentModule, currentClass, _
+		    currentMethodFullPath, inMethod)
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function BuildFullName(itemType As String, itemName As String, currentModule As String, currentClass As String) As String
 		  Var fullName As String = itemType + ": "
 		  
@@ -15,6 +36,25 @@ Protected Class ProjectAnalyzer
 		  End If
 		  
 		  Return fullName
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function BuildMethodFullPath(line As String, currentModule As String, currentClass As String) As String
+		  // Build the full path for a method based on context
+		  
+		  Var methodName As String = ExtractMethodName(line)
+		  If methodName.Trim = "" Then Return ""
+		  
+		  If currentModule.Trim <> "" And currentClass.Trim <> "" Then
+		    Return currentModule + "." + currentClass + "." + methodName
+		  ElseIf currentModule.Trim <> "" Then
+		    Return currentModule + "." + methodName
+		  ElseIf currentClass.Trim <> "" Then
+		    Return currentClass + "." + methodName
+		  Else
+		    Return methodName
+		  End If
 		End Function
 	#tag EndMethod
 
@@ -307,11 +347,51 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub HandleEndTag(line As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String)
+		  // Handle different types of end tags
+		  
+		  If line.BeginsWith("#tag EndModule") Then
+		    currentModule = ""
+		    currentClass = ""
+		    currentInterface = ""
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf line.BeginsWith("#tag EndClass") Then
+		    currentClass = ""
+		    currentInterface = ""
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
+		    // Save the accumulated code to the method element
+		    If inMethodOrFunction And currentMethodFullPath.Trim <> "" Then
+		      Var methodElement As CodeElement = FindElementByFullPath(currentMethodFullPath)
+		      If methodElement <> Nil Then
+		        methodElement.Code = currentMethodCode
+		        System.DebugLog("Stored code for method: " + currentMethodFullPath + " (" + currentMethodCode.Length.ToString + " chars)")
+		      End If
+		    End If
+		    
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function IsClassDeclaration(line As String) As Boolean
 		  Return line.BeginsWith("Protected Class ") Or _
 		  line.BeginsWith("Public Class ") Or _
 		  line.BeginsWith("Private Class ") Or _
 		  line.BeginsWith("Class ")
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsEndTag(line As String) As Boolean
+		  // Check if line is any kind of end tag
+		  Return line.BeginsWith("#tag End") Or _
+		  line = "End" Or _
+		  line = "End Sub" Or _
+		  line = "End Function"
 		End Function
 	#tag EndMethod
 
@@ -464,103 +544,6 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Sub ProcessLine(trimmedLine As String, fullLine As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, fileName As String)
-		  // Process a single line and update context accordingly
-		  
-		  If IsModuleDeclaration(trimmedLine) Then
-		    currentModule = ProcessModuleDeclaration(trimmedLine, fileName)
-		    currentClass = ""
-		    currentInterface = ""
-		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		    
-		  ElseIf IsInterfaceDeclaration(trimmedLine) Then
-		    currentInterface = ProcessInterfaceDeclaration(trimmedLine, currentModule, fileName)
-		    currentClass = currentInterface
-		    
-		  ElseIf IsClassDeclaration(trimmedLine) Then
-		    currentClass = ProcessClassDeclaration(trimmedLine, currentModule, fileName)
-		    currentInterface = ""
-		    
-		  ElseIf IsMethodOrFunctionDeclaration(trimmedLine) Then
-		    StartMethodCapture(trimmedLine, currentModule, currentClass, fileName, _
-		    inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		    
-		  ElseIf IsPropertyDeclaration(trimmedLine) Then
-		    ProcessPropertyDeclaration(trimmedLine, currentModule, currentClass, fileName)
-		    
-		  ElseIf IsVariableDeclaration(trimmedLine) And Not inMethodOrFunction Then
-		    ProcessVariableDeclaration(trimmedLine, currentModule, currentClass, fileName)
-		    
-		  ElseIf IsEndTag(trimmedLine) Then
-		    HandleEndTag(trimmedLine, inMethodOrFunction, currentMethodFullPath, currentMethodCode, _
-		    currentModule, currentClass, currentInterface)
-		    
-		  ElseIf inMethodOrFunction Then
-		    // Accumulate code lines while inside a method
-		    currentMethodCode = currentMethodCode + fullLine + EndOfLine
-		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function IsEndTag(line As String) As Boolean
-		  // Check if line is any kind of end tag
-		  Return line.BeginsWith("#tag End") Or _
-		  line = "End" Or _
-		  line = "End Sub" Or _
-		  line = "End Function"
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub ResetMethodContext(ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
-		  // Reset method tracking variables
-		  inMethodOrFunction = False
-		  currentMethodFullPath = ""
-		  currentMethodCode = ""
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub StartMethodCapture(line As String, currentModule As String, currentClass As String, fileName As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
-		  // Start capturing a method's code
-		  currentMethodFullPath = ProcessMethodDeclaration(line, currentModule, currentClass, fileName)
-		  inMethodOrFunction = True
-		  currentMethodCode = ""
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub HandleEndTag(line As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String)
-		  // Handle different types of end tags
-		  
-		  If line.BeginsWith("#tag EndModule") Then
-		    currentModule = ""
-		    currentClass = ""
-		    currentInterface = ""
-		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		    
-		  ElseIf line.BeginsWith("#tag EndClass") Then
-		    currentClass = ""
-		    currentInterface = ""
-		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		    
-		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
-		    // Save the accumulated code to the method element
-		    If inMethodOrFunction And currentMethodFullPath.Trim <> "" Then
-		      Var methodElement As CodeElement = FindElementByFullPath(currentMethodFullPath)
-		      If methodElement <> Nil Then
-		        methodElement.Code = currentMethodCode
-		        System.DebugLog("Stored code for method: " + currentMethodFullPath + " (" + currentMethodCode.Length.ToString + " chars)")
-		      End If
-		    End If
-		    
-		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
 		Private Function ProcessClassDeclaration(line As String, currentModule As String, fileName As String) As String
 		  Var className As String = line
 		  
@@ -631,6 +614,74 @@ Protected Class ProjectAnalyzer
 		  
 		  Return interfaceName
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ProcessLine(trimmedLine As String, fullLine As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, fileName As String)
+		  // Process a single line and update context accordingly
+		  
+		  If IsModuleDeclaration(trimmedLine) Then
+		    currentModule = ProcessModuleDeclaration(trimmedLine, fileName)
+		    currentClass = ""
+		    currentInterface = ""
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf IsInterfaceDeclaration(trimmedLine) Then
+		    currentInterface = ProcessInterfaceDeclaration(trimmedLine, currentModule, fileName)
+		    currentClass = currentInterface
+		    
+		  ElseIf IsClassDeclaration(trimmedLine) Then
+		    currentClass = ProcessClassDeclaration(trimmedLine, currentModule, fileName)
+		    currentInterface = ""
+		    
+		  ElseIf IsMethodOrFunctionDeclaration(trimmedLine) Then
+		    StartMethodCapture(trimmedLine, currentModule, currentClass, fileName, _
+		    inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf IsPropertyDeclaration(trimmedLine) Then
+		    ProcessPropertyDeclaration(trimmedLine, currentModule, currentClass, fileName)
+		    
+		  ElseIf IsVariableDeclaration(trimmedLine) And Not inMethodOrFunction Then
+		    ProcessVariableDeclaration(trimmedLine, currentModule, currentClass, fileName)
+		    
+		  ElseIf IsEndTag(trimmedLine) Then
+		    HandleEndTag(trimmedLine, inMethodOrFunction, currentMethodFullPath, currentMethodCode, _
+		    currentModule, currentClass, currentInterface)
+		    
+		  ElseIf inMethodOrFunction Then
+		    // Accumulate code lines while inside a method
+		    currentMethodCode = currentMethodCode + fullLine + EndOfLine
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ProcessLineForRelationships(line As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentMethodFullPath As String, ByRef inMethod As Boolean)
+		  // Process a line to track context and detect relationships
+		  
+		  If IsModuleDeclaration(line) Then
+		    currentModule = ExtractModuleName(line)
+		    currentClass = ""
+		    inMethod = False
+		    currentMethodFullPath = ""
+		    
+		  ElseIf IsClassDeclaration(line) Then
+		    currentClass = ExtractClassName(line)
+		    inMethod = False
+		    currentMethodFullPath = ""
+		    
+		  ElseIf IsMethodOrFunctionDeclaration(line) Then
+		    currentMethodFullPath = BuildMethodFullPath(line, currentModule, currentClass)
+		    inMethod = True
+		    
+		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
+		    inMethod = False
+		    
+		  ElseIf inMethod And currentMethodFullPath.Trim <> "" Then
+		    // Look for method calls in this line
+		    DetectMethodCalls(line, currentMethodFullPath)
+		  End If
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -770,6 +821,15 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub ResetMethodContext(ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
+		  // Reset method tracking variables
+		  inMethodOrFunction = False
+		  currentMethodFullPath = ""
+		  currentMethodCode = ""
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub ScanFileForRelationships(item As FolderItem)
 		  // REFACTORED: Now broken into focused helper methods
 		  
@@ -791,75 +851,6 @@ Protected Class ProjectAnalyzer
 		    System.DebugLog("Error scanning file for relationships: " + item.Name)
 		  End Try
 		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub AnalyzeFileForRelationships(content As String)
-		  // Track context and find method calls
-		  
-		  Var lines() As String = content.Split(EndOfLine)
-		  Var currentModule As String = ""
-		  Var currentClass As String = ""
-		  Var currentMethodFullPath As String = ""
-		  Var inMethod As Boolean = False
-		  
-		  For Each line As String In lines
-		    line = line.Trim
-		    
-		    If line.Trim = "" Then Continue
-		    
-		    ProcessLineForRelationships(line, currentModule, currentClass, _
-		    currentMethodFullPath, inMethod)
-		  Next
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub ProcessLineForRelationships(line As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentMethodFullPath As String, ByRef inMethod As Boolean)
-		  // Process a line to track context and detect relationships
-		  
-		  If IsModuleDeclaration(line) Then
-		    currentModule = ExtractModuleName(line)
-		    currentClass = ""
-		    inMethod = False
-		    currentMethodFullPath = ""
-		    
-		  ElseIf IsClassDeclaration(line) Then
-		    currentClass = ExtractClassName(line)
-		    inMethod = False
-		    currentMethodFullPath = ""
-		    
-		  ElseIf IsMethodOrFunctionDeclaration(line) Then
-		    currentMethodFullPath = BuildMethodFullPath(line, currentModule, currentClass)
-		    inMethod = True
-		    
-		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
-		    inMethod = False
-		    
-		  ElseIf inMethod And currentMethodFullPath.Trim <> "" Then
-		    // Look for method calls in this line
-		    DetectMethodCalls(line, currentMethodFullPath)
-		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function BuildMethodFullPath(line As String, currentModule As String, currentClass As String) As String
-		  // Build the full path for a method based on context
-		  
-		  Var methodName As String = ExtractMethodName(line)
-		  If methodName.Trim = "" Then Return ""
-		  
-		  If currentModule.Trim <> "" And currentClass.Trim <> "" Then
-		    Return currentModule + "." + currentClass + "." + methodName
-		  ElseIf currentModule.Trim <> "" Then
-		    Return currentModule + "." + methodName
-		  ElseIf currentClass.Trim <> "" Then
-		    Return currentClass + "." + methodName
-		  Else
-		    Return methodName
-		  End If
-		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -920,6 +911,15 @@ Protected Class ProjectAnalyzer
 		      Continue
 		    End Try
 		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub StartMethodCapture(line As String, currentModule As String, currentClass As String, fileName As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
+		  // Start capturing a method's code
+		  currentMethodFullPath = ProcessMethodDeclaration(line, currentModule, currentClass, fileName)
+		  inMethodOrFunction = True
+		  currentMethodCode = ""
 		End Sub
 	#tag EndMethod
 

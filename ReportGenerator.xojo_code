@@ -1,6 +1,153 @@
 #tag Class
 Protected Class ReportGenerator
 	#tag Method, Flags = &h21
+		Private Function CalculateAggregateStats(methodMetrics() As MethodMetrics) As Dictionary
+		  // Calculate aggregate statistics from method metrics
+		  
+		  Var stats As New Dictionary
+		  
+		  Var totalLOC As Integer = 0
+		  Var totalComplexity As Integer = 0
+		  Var maxComplexity As Integer = 0
+		  Var maxLOC As Integer = 0
+		  Var maxCallDepth As Integer = 0
+		  Var maxChainDepth As Integer = 0
+		  
+		  For Each metric As MethodMetrics In methodMetrics
+		    totalLOC = totalLOC + metric.LinesOfCode
+		    totalComplexity = totalComplexity + metric.Complexity
+		    
+		    If metric.Complexity > maxComplexity Then
+		      maxComplexity = metric.Complexity
+		    End If
+		    If metric.LinesOfCode > maxLOC Then
+		      maxLOC = metric.LinesOfCode
+		    End If
+		    If metric.CallDepth > maxCallDepth Then
+		      maxCallDepth = metric.CallDepth
+		    End If
+		    If metric.CallChainDepth > maxChainDepth Then
+		      maxChainDepth = metric.CallChainDepth
+		    End If
+		  Next
+		  
+		  Var avgLOC As Integer = 0
+		  Var avgComplexity As Integer = 0
+		  If methodMetrics.Count > 0 Then
+		    avgLOC = totalLOC \ methodMetrics.Count
+		    avgComplexity = totalComplexity \ methodMetrics.Count
+		  End If
+		  
+		  stats.Value("totalLOC") = totalLOC
+		  stats.Value("avgLOC") = avgLOC
+		  stats.Value("avgComplexity") = avgComplexity
+		  stats.Value("maxComplexity") = maxComplexity
+		  stats.Value("maxLOC") = maxLOC
+		  stats.Value("maxChainDepth") = maxChainDepth
+		  
+		  Return stats
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function CalculateCallChainDepth(element As CodeElement, visited As Dictionary, currentDepth As Integer) As Integer
+		  // Calculate the deepest call chain from this element
+		  
+		  If visited.HasKey(element.FullPath) Then
+		    Return currentDepth
+		  End If
+		  
+		  visited.Value(element.FullPath) = True
+		  
+		  Var maxDepth As Integer = currentDepth
+		  
+		  For Each calledElement As CodeElement In element.CallsTo
+		    Var depth As Integer = CalculateCallChainDepth(calledElement, visited, currentDepth + 1)
+		    If depth > maxDepth Then
+		      maxDepth = depth
+		    End If
+		  Next
+		  
+		  visited.Remove(element.FullPath)
+		  
+		  Return maxDepth
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function CalculateCyclomaticComplexity(code As String) As Integer
+		  // Count decision points
+		  
+		  Var complexity As Integer = 1
+		  Var upperCode As String = code.Uppercase
+		  
+		  complexity = complexity + CountOccurrences(upperCode, " IF ")
+		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "IF ")
+		  complexity = complexity + CountOccurrences(upperCode, "ELSEIF ")
+		  complexity = complexity + CountOccurrences(upperCode, " FOR ")
+		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "FOR ")
+		  complexity = complexity + CountOccurrences(upperCode, " WHILE ")
+		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "WHILE ")
+		  complexity = complexity + CountOccurrences(upperCode, " DO ")
+		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "DO ")
+		  complexity = complexity + CountOccurrences(upperCode, " CASE ")
+		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "CASE ")
+		  complexity = complexity + CountOccurrences(upperCode, " AND ")
+		  complexity = complexity + CountOccurrences(upperCode, " OR ")
+		  
+		  Return complexity
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function CalculatePDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
+		  // Calculate total height needed for the PDF
+		  
+		  Var unusedElements() As CodeElement = analyzer.GetUnusedElements()
+		  Var allMethods() As CodeElement = analyzer.GetMethodElements
+		  
+		  Var estimatedLines As Integer = 50  // Header + summary
+		  estimatedLines = estimatedLines + (unusedElements.Count * 2)
+		  estimatedLines = estimatedLines + 20  // Relationship section
+		  estimatedLines = estimatedLines + 40  // Complexity section
+		  estimatedLines = estimatedLines + 30  // Most complex methods
+		  
+		  // Count relationship lines
+		  Var relationshipCount As Integer = 0
+		  For Each element As CodeElement In allMethods
+		    If element.CallsTo.Count > 0 Then
+		      relationshipCount = relationshipCount + element.CallsTo.Count
+		    End If
+		  Next
+		  If relationshipCount > 15 Then
+		    relationshipCount = 15
+		  End If
+		  estimatedLines = estimatedLines + relationshipCount
+		  
+		  Return CType(estimatedLines * lineHeight + (margin * 3), Integer)
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function CountOccurrences(text As String, searchFor As String) As Integer
+		  // Count how many times searchFor appears in text
+		  
+		  Var count As Integer = 0
+		  Var pos As Integer = 0
+		  
+		  Do
+		    pos = text.IndexOf(pos, searchFor)
+		    If pos >= 0 Then
+		      count = count + 1
+		      pos = pos + searchFor.Length
+		    End If
+		  Loop Until pos < 0
+		  
+		  Return count
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub DrawCenteredText(g As Graphics, text As String, centerX As Double, y As Double, maxWidth As Double)
 		  // Draw text centered at the given x position
 		  Var textWidth As Double = g.TextWidth(text)
@@ -51,181 +198,48 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function CalculatePDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
-		  // Calculate total height needed for the PDF
+		Private Function GetMethodMetrics(methods() As CodeElement) As MethodMetrics()
+		  // Calculate complexity metrics for all methods
 		  
-		  Var unusedElements() As CodeElement = analyzer.GetUnusedElements()
-		  Var allMethods() As CodeElement = analyzer.GetMethodElements
+		  Var metrics() As MethodMetrics
 		  
-		  Var estimatedLines As Integer = 50  // Header + summary
-		  estimatedLines = estimatedLines + (unusedElements.Count * 2)
-		  estimatedLines = estimatedLines + 20  // Relationship section
-		  estimatedLines = estimatedLines + 40  // Complexity section
-		  estimatedLines = estimatedLines + 30  // Most complex methods
-		  
-		  // Count relationship lines
-		  Var relationshipCount As Integer = 0
-		  For Each element As CodeElement In allMethods
-		    If element.CallsTo.Count > 0 Then
-		      relationshipCount = relationshipCount + element.CallsTo.Count
+		  For Each method As CodeElement In methods
+		    Var m As New MethodMetrics
+		    m.MethodName = method.FullPath
+		    m.Element = method
+		    
+		    // Lines of Code
+		    If method.Code.Trim <> "" Then
+		      Var lines() As String = method.Code.Split(EndOfLine)
+		      Var nonEmptyLines As Integer = 0
+		      For Each line As String In lines
+		        If line.Trim <> "" Then
+		          nonEmptyLines = nonEmptyLines + 1
+		        End If
+		      Next
+		      m.LinesOfCode = nonEmptyLines
+		    Else
+		      m.LinesOfCode = 0
 		    End If
-		  Next
-		  If relationshipCount > 15 Then
-		    relationshipCount = 15
-		  End If
-		  estimatedLines = estimatedLines + relationshipCount
-		  
-		  Return CType(estimatedLines * lineHeight + (margin * 3), Integer)
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function RenderHeader(g As Graphics, pageWidth As Integer, margin As Double, yPos As Double) As Double
-		  // Render the report header
-		  
-		  g.FontSize = 18
-		  g.Bold = True
-		  g.DrawingColor = Color.Black
-		  DrawCenteredText(g, "CODE ANALYSIS REPORT", pageWidth / 2, yPos, pageWidth - (margin * 2))
-		  yPos = yPos + 30
-		  
-		  // Decorative line
-		  g.DrawingColor = Color.RGB(100, 100, 100)
-		  g.DrawLine(margin, yPos, pageWidth - margin, yPos)
-		  yPos = yPos + 25
-		  
-		  Return yPos
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function RenderSummary(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Render summary statistics section
-		  
-		  g.FontSize = 14
-		  g.Bold = True
-		  g.DrawingColor = Color.Black
-		  
-		  Var totalCount As String = analyzer.AllElements.Count.ToString
-		  g.DrawText("Total Elements Found: " + totalCount, margin, yPos)
-		  yPos = yPos + lineHeight + 5
-		  
-		  g.FontSize = 12
-		  g.Bold = False
-		  
-		  Var classCount As String = analyzer.GetClassElements.Count.ToString
-		  g.DrawText("  - Classes: " + classCount, margin + 20, yPos)
-		  yPos = yPos + lineHeight
-		  
-		  Var moduleCount As String = analyzer.GetModuleElements.Count.ToString
-		  g.DrawText("  - Modules: " + moduleCount, margin + 20, yPos)
-		  yPos = yPos + lineHeight
-		  
-		  Var methodCount As String = analyzer.GetMethodElements.Count.ToString
-		  g.DrawText("  - Methods: " + methodCount, margin + 20, yPos)
-		  yPos = yPos + 25
-		  
-		  Return yPos
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function RenderUnusedElements(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Render unused elements section
-		  
-		  Var unusedElements() As CodeElement = analyzer.GetUnusedElements()
-		  
-		  g.FontSize = 14
-		  g.Bold = True
-		  
-		  If unusedElements.Count > 0 Then
-		    g.DrawingColor = Color.RGB(200, 0, 0)
-		    Var unusedCount As String = unusedElements.Count.ToString
-		    g.DrawText("⚠ Found " + unusedCount + " UNUSED elements:", margin, yPos)
-		  Else
-		    g.DrawingColor = Color.RGB(0, 150, 0)
-		    g.DrawText("✓ No unused elements found", margin, yPos)
-		  End If
-		  yPos = yPos + 25
-		  
-		  If unusedElements.Count > 0 Then
-		    yPos = RenderUnusedByType(g, unusedElements, margin, lineHeight, yPos)
-		  End If
-		  
-		  Return yPos
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function RenderUnusedByType(g As Graphics, unusedElements() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Render unused elements grouped by type
-		  
-		  // Group by element type
-		  Var methodsList() As CodeElement
-		  Var classesList() As CodeElement
-		  Var modulesList() As CodeElement
-		  Var propertiesList() As CodeElement
-		  Var variablesList() As CodeElement
-		  
-		  For Each element As CodeElement In unusedElements
-		    Select Case element.ElementType
-		    Case "METHOD"
-		      methodsList.Add(element)
-		    Case "CLASS"
-		      classesList.Add(element)
-		    Case "MODULE"
-		      modulesList.Add(element)
-		    Case "PROPERTY"
-		      propertiesList.Add(element)
-		    Case "VARIABLE"
-		      variablesList.Add(element)
-		    End Select
+		    
+		    // Cyclomatic Complexity
+		    If method.Code.Trim <> "" Then
+		      m.Complexity = CalculateCyclomaticComplexity(method.Code)
+		    Else
+		      m.Complexity = 1
+		    End If
+		    
+		    // Call Depth
+		    m.CallDepth = method.CallsTo.Count
+		    
+		    // Call Chain Depth
+		    Var visited As New Dictionary
+		    m.CallChainDepth = CalculateCallChainDepth(method, visited, 0)
+		    
+		    metrics.Add(m)
 		  Next
 		  
-		  g.Bold = False
-		  g.DrawingColor = Color.Black
-		  g.FontSize = 11
-		  
-		  // Render each type
-		  If methodsList.Count > 0 Then
-		    yPos = RenderUnusedTypeList(g, "METHOD", methodsList, margin, lineHeight, yPos)
-		  End If
-		  If classesList.Count > 0 Then
-		    yPos = RenderUnusedTypeList(g, "CLASS", classesList, margin, lineHeight, yPos)
-		  End If
-		  If modulesList.Count > 0 Then
-		    yPos = RenderUnusedTypeList(g, "MODULE", modulesList, margin, lineHeight, yPos)
-		  End If
-		  If propertiesList.Count > 0 Then
-		    yPos = RenderUnusedTypeList(g, "PROPERTY", propertiesList, margin, lineHeight, yPos)
-		  End If
-		  If variablesList.Count > 0 Then
-		    yPos = RenderUnusedTypeList(g, "VARIABLE", variablesList, margin, lineHeight, yPos)
-		  End If
-		  
-		  Return yPos
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function RenderUnusedTypeList(g As Graphics, typeName As String, elements() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Render a list of unused elements of a specific type
-		  
-		  g.FontSize = 12
-		  g.Bold = True
-		  Var count As String = elements.Count.ToString
-		  g.DrawText("▼ " + typeName + " (" + count + "):", margin, yPos)
-		  yPos = yPos + lineHeight + 3
-		  
-		  g.FontSize = 10
-		  g.Bold = False
-		  For Each element As CodeElement In elements
-		    g.DrawText("  • " + element.FullPath + " [" + element.FileName + "]", margin + 10, yPos)
-		    yPos = yPos + lineHeight
-		  Next
-		  yPos = yPos + 10
-		  
-		  Return yPos
+		  Return metrics
 		End Function
 	#tag EndMethod
 
@@ -286,51 +300,156 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function CalculateAggregateStats(methodMetrics() As MethodMetrics) As Dictionary
-		  // Calculate aggregate statistics from method metrics
+		Private Function RenderFooter(g As Graphics, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Render report footer
 		  
-		  Var stats As New Dictionary
+		  yPos = yPos + 30
 		  
-		  Var totalLOC As Integer = 0
-		  Var totalComplexity As Integer = 0
-		  Var maxComplexity As Integer = 0
-		  Var maxLOC As Integer = 0
-		  Var maxCallDepth As Integer = 0
-		  Var maxChainDepth As Integer = 0
+		  // Decorative line
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawLine(margin, yPos, pageWidth - margin, yPos)
+		  yPos = yPos + 20
 		  
-		  For Each metric As MethodMetrics In methodMetrics
-		    totalLOC = totalLOC + metric.LinesOfCode
-		    totalComplexity = totalComplexity + metric.Complexity
-		    
-		    If metric.Complexity > maxComplexity Then
-		      maxComplexity = metric.Complexity
-		    End If
-		    If metric.LinesOfCode > maxLOC Then
-		      maxLOC = metric.LinesOfCode
-		    End If
-		    If metric.CallDepth > maxCallDepth Then
-		      maxCallDepth = metric.CallDepth
-		    End If
-		    If metric.CallChainDepth > maxChainDepth Then
-		      maxChainDepth = metric.CallChainDepth
+		  g.FontSize = 11
+		  g.Bold = False
+		  g.DrawingColor = Color.RGB(0, 100, 0)
+		  DrawCenteredText(g, "Scan completed successfully!", pageWidth / 2, yPos, pageWidth - (margin * 2))
+		  yPos = yPos + lineHeight
+		  
+		  // Timestamp
+		  yPos = yPos + 20
+		  g.FontSize = 9
+		  g.DrawingColor = Color.RGB(128, 128, 128)
+		  Var dt As DateTime = DateTime.Now
+		  Var timestamp As String = dt.ToString
+		  DrawCenteredText(g, "Generated: " + timestamp, pageWidth / 2, yPos, pageWidth - (margin * 2))
+		  
+		  Return yPos
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderHeader(g As Graphics, pageWidth As Integer, margin As Double, yPos As Double) As Double
+		  // Render the report header
+		  
+		  g.FontSize = 18
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  DrawCenteredText(g, "CODE ANALYSIS REPORT", pageWidth / 2, yPos, pageWidth - (margin * 2))
+		  yPos = yPos + 30
+		  
+		  // Decorative line
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawLine(margin, yPos, pageWidth - margin, yPos)
+		  yPos = yPos + 25
+		  
+		  Return yPos
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderRelationships(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Render relationship analysis section
+		  
+		  Var allMethods() As CodeElement = analyzer.GetMethodElements
+		  
+		  yPos = yPos + 20
+		  
+		  // Section header
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawLine(margin, yPos, 612 - margin, yPos)
+		  yPos = yPos + 20
+		  
+		  g.FontSize = 14
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("RELATIONSHIP ANALYSIS", margin, yPos)
+		  yPos = yPos + 25
+		  
+		  // Count methods with calls
+		  Var methodsWithCalls As Integer = 0
+		  Var totalCalls As Integer = 0
+		  
+		  For Each element As CodeElement In allMethods
+		    If element.CallsTo.Count > 0 Then
+		      methodsWithCalls = methodsWithCalls + 1
+		      totalCalls = totalCalls + element.CallsTo.Count
 		    End If
 		  Next
 		  
-		  Var avgLOC As Integer = 0
-		  Var avgComplexity As Integer = 0
-		  If methodMetrics.Count > 0 Then
-		    avgLOC = totalLOC \ methodMetrics.Count
-		    avgComplexity = totalComplexity \ methodMetrics.Count
+		  g.FontSize = 12
+		  g.Bold = False
+		  g.DrawText("Methods with outgoing calls: " + methodsWithCalls.ToString, margin, yPos)
+		  yPos = yPos + lineHeight
+		  
+		  g.DrawText("Total method calls detected: " + totalCalls.ToString, margin, yPos)
+		  yPos = yPos + 20
+		  
+		  // Sample relationships
+		  If totalCalls > 0 Then
+		    yPos = RenderSampleRelationships(g, allMethods, margin, lineHeight, yPos)
 		  End If
 		  
-		  stats.Value("totalLOC") = totalLOC
-		  stats.Value("avgLOC") = avgLOC
-		  stats.Value("avgComplexity") = avgComplexity
-		  stats.Value("maxComplexity") = maxComplexity
-		  stats.Value("maxLOC") = maxLOC
-		  stats.Value("maxChainDepth") = maxChainDepth
+		  Return yPos
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderSampleRelationships(g As Graphics, allMethods() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Private Function RenderSampleRelationships(g As Graphics, allMethods() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Render all method call relationships
 		  
-		  Return stats
+		  g.FontSize = 11
+		  g.Bold = True
+		  g.DrawText("All relationships:", margin, yPos)
+		  yPos = yPos + lineHeight + 3
+		  
+		  g.FontSize = 10
+		  g.Bold = False
+		  g.DrawingColor = Color.RGB(50, 50, 150)
+		  
+		  For Each element As CodeElement In allMethods
+		    If element.CallsTo.Count > 0 Then
+		      For Each calledElement As CodeElement In element.CallsTo
+		        g.DrawText("  " + element.FullPath + " -> " + calledElement.FullPath, margin + 10, yPos)
+		        yPos = yPos + lineHeight
+		      Next
+		    End If
+		  Next
+		  
+		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderSummary(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Render summary statistics section
+		  
+		  g.FontSize = 14
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  
+		  Var totalCount As String = analyzer.AllElements.Count.ToString
+		  g.DrawText("Total Elements Found: " + totalCount, margin, yPos)
+		  yPos = yPos + lineHeight + 5
+		  
+		  g.FontSize = 12
+		  g.Bold = False
+		  
+		  Var classCount As String = analyzer.GetClassElements.Count.ToString
+		  g.DrawText("  - Classes: " + classCount, margin + 20, yPos)
+		  yPos = yPos + lineHeight
+		  
+		  Var moduleCount As String = analyzer.GetModuleElements.Count.ToString
+		  g.DrawText("  - Modules: " + moduleCount, margin + 20, yPos)
+		  yPos = yPos + lineHeight
+		  
+		  Var methodCount As String = analyzer.GetMethodElements.Count.ToString
+		  g.DrawText("  - Methods: " + methodCount, margin + 20, yPos)
+		  yPos = yPos + 25
+		  
+		  Return yPos
 		End Function
 	#tag EndMethod
 
@@ -388,46 +507,50 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function RenderRelationships(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Render relationship analysis section
+		Private Function RenderUnusedByType(g As Graphics, unusedElements() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Render unused elements grouped by type
 		  
-		  Var allMethods() As CodeElement = analyzer.GetMethodElements
+		  // Group by element type
+		  Var methodsList() As CodeElement
+		  Var classesList() As CodeElement
+		  Var modulesList() As CodeElement
+		  Var propertiesList() As CodeElement
+		  Var variablesList() As CodeElement
 		  
-		  yPos = yPos + 20
-		  
-		  // Section header
-		  g.DrawingColor = Color.RGB(100, 100, 100)
-		  g.DrawLine(margin, yPos, 612 - margin, yPos)
-		  yPos = yPos + 20
-		  
-		  g.FontSize = 14
-		  g.Bold = True
-		  g.DrawingColor = Color.Black
-		  g.DrawText("RELATIONSHIP ANALYSIS", margin, yPos)
-		  yPos = yPos + 25
-		  
-		  // Count methods with calls
-		  Var methodsWithCalls As Integer = 0
-		  Var totalCalls As Integer = 0
-		  
-		  For Each element As CodeElement In allMethods
-		    If element.CallsTo.Count > 0 Then
-		      methodsWithCalls = methodsWithCalls + 1
-		      totalCalls = totalCalls + element.CallsTo.Count
-		    End If
+		  For Each element As CodeElement In unusedElements
+		    Select Case element.ElementType
+		    Case "METHOD"
+		      methodsList.Add(element)
+		    Case "CLASS"
+		      classesList.Add(element)
+		    Case "MODULE"
+		      modulesList.Add(element)
+		    Case "PROPERTY"
+		      propertiesList.Add(element)
+		    Case "VARIABLE"
+		      variablesList.Add(element)
+		    End Select
 		  Next
 		  
-		  g.FontSize = 12
 		  g.Bold = False
-		  g.DrawText("Methods with outgoing calls: " + methodsWithCalls.ToString, margin, yPos)
-		  yPos = yPos + lineHeight
+		  g.DrawingColor = Color.Black
+		  g.FontSize = 11
 		  
-		  g.DrawText("Total method calls detected: " + totalCalls.ToString, margin, yPos)
-		  yPos = yPos + 20
-		  
-		  // Sample relationships
-		  If totalCalls > 0 Then
-		    yPos = RenderSampleRelationships(g, allMethods, margin, lineHeight, yPos)
+		  // Render each type
+		  If methodsList.Count > 0 Then
+		    yPos = RenderUnusedTypeList(g, "METHOD", methodsList, margin, lineHeight, yPos)
+		  End If
+		  If classesList.Count > 0 Then
+		    yPos = RenderUnusedTypeList(g, "CLASS", classesList, margin, lineHeight, yPos)
+		  End If
+		  If modulesList.Count > 0 Then
+		    yPos = RenderUnusedTypeList(g, "MODULE", modulesList, margin, lineHeight, yPos)
+		  End If
+		  If propertiesList.Count > 0 Then
+		    yPos = RenderUnusedTypeList(g, "PROPERTY", propertiesList, margin, lineHeight, yPos)
+		  End If
+		  If variablesList.Count > 0 Then
+		    yPos = RenderUnusedTypeList(g, "VARIABLE", variablesList, margin, lineHeight, yPos)
 		  End If
 		  
 		  Return yPos
@@ -435,179 +558,51 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function RenderSampleRelationships(g As Graphics, allMethods() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Render sample method call relationships
+		Private Function RenderUnusedElements(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Render unused elements section
 		  
-		  g.FontSize = 11
+		  Var unusedElements() As CodeElement = analyzer.GetUnusedElements()
+		  
+		  g.FontSize = 14
 		  g.Bold = True
-		  Var maxSamples As Integer = 15
-		  g.DrawText("Sample relationships (first " + maxSamples.ToString + "):", margin, yPos)
+		  
+		  If unusedElements.Count > 0 Then
+		    g.DrawingColor = Color.RGB(200, 0, 0)
+		    Var unusedCount As String = unusedElements.Count.ToString
+		    g.DrawText("⚠ Found " + unusedCount + " UNUSED elements:", margin, yPos)
+		  Else
+		    g.DrawingColor = Color.RGB(0, 150, 0)
+		    g.DrawText("✓ No unused elements found", margin, yPos)
+		  End If
+		  yPos = yPos + 25
+		  
+		  If unusedElements.Count > 0 Then
+		    yPos = RenderUnusedByType(g, unusedElements, margin, lineHeight, yPos)
+		  End If
+		  
+		  Return yPos
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderUnusedTypeList(g As Graphics, typeName As String, elements() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Render a list of unused elements of a specific type
+		  
+		  g.FontSize = 12
+		  g.Bold = True
+		  Var count As String = elements.Count.ToString
+		  g.DrawText("▼ " + typeName + " (" + count + "):", margin, yPos)
 		  yPos = yPos + lineHeight + 3
 		  
 		  g.FontSize = 10
 		  g.Bold = False
-		  g.DrawingColor = Color.RGB(50, 50, 150)
-		  
-		  Var sampleCount As Integer = 0
-		  For Each element As CodeElement In allMethods
-		    If element.CallsTo.Count > 0 Then
-		      For Each calledElement As CodeElement In element.CallsTo
-		        If sampleCount >= maxSamples Then
-		          Exit For element
-		        End If
-		        
-		        g.DrawText("  " + element.FullPath + " -> " + calledElement.FullPath, margin + 10, yPos)
-		        yPos = yPos + lineHeight
-		        sampleCount = sampleCount + 1
-		      Next
-		    End If
+		  For Each element As CodeElement In elements
+		    g.DrawText("  • " + element.FullPath + " [" + element.FileName + "]", margin + 10, yPos)
+		    yPos = yPos + lineHeight
 		  Next
+		  yPos = yPos + 10
 		  
 		  Return yPos
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function RenderFooter(g As Graphics, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Render report footer
-		  
-		  yPos = yPos + 30
-		  
-		  // Decorative line
-		  g.DrawingColor = Color.RGB(100, 100, 100)
-		  g.DrawLine(margin, yPos, pageWidth - margin, yPos)
-		  yPos = yPos + 20
-		  
-		  g.FontSize = 11
-		  g.Bold = False
-		  g.DrawingColor = Color.RGB(0, 100, 0)
-		  DrawCenteredText(g, "Scan completed successfully!", pageWidth / 2, yPos, pageWidth - (margin * 2))
-		  yPos = yPos + lineHeight
-		  
-		  // Timestamp
-		  yPos = yPos + 20
-		  g.FontSize = 9
-		  g.DrawingColor = Color.RGB(128, 128, 128)
-		  Var dt As DateTime = DateTime.Now
-		  Var timestamp As String = dt.ToString
-		  DrawCenteredText(g, "Generated: " + timestamp, pageWidth / 2, yPos, pageWidth - (margin * 2))
-		  
-		  Return yPos
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function CalculateCallChainDepth(element As CodeElement, visited As Dictionary, currentDepth As Integer) As Integer
-		  // Calculate the deepest call chain from this element
-		  
-		  If visited.HasKey(element.FullPath) Then
-		    Return currentDepth
-		  End If
-		  
-		  visited.Value(element.FullPath) = True
-		  
-		  Var maxDepth As Integer = currentDepth
-		  
-		  For Each calledElement As CodeElement In element.CallsTo
-		    Var depth As Integer = CalculateCallChainDepth(calledElement, visited, currentDepth + 1)
-		    If depth > maxDepth Then
-		      maxDepth = depth
-		    End If
-		  Next
-		  
-		  visited.Remove(element.FullPath)
-		  
-		  Return maxDepth
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function CalculateCyclomaticComplexity(code As String) As Integer
-		  // Count decision points
-		  
-		  Var complexity As Integer = 1
-		  Var upperCode As String = code.Uppercase
-		  
-		  complexity = complexity + CountOccurrences(upperCode, " IF ")
-		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "IF ")
-		  complexity = complexity + CountOccurrences(upperCode, "ELSEIF ")
-		  complexity = complexity + CountOccurrences(upperCode, " FOR ")
-		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "FOR ")
-		  complexity = complexity + CountOccurrences(upperCode, " WHILE ")
-		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "WHILE ")
-		  complexity = complexity + CountOccurrences(upperCode, " DO ")
-		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "DO ")
-		  complexity = complexity + CountOccurrences(upperCode, " CASE ")
-		  complexity = complexity + CountOccurrences(upperCode, EndOfLine + "CASE ")
-		  complexity = complexity + CountOccurrences(upperCode, " AND ")
-		  complexity = complexity + CountOccurrences(upperCode, " OR ")
-		  
-		  Return complexity
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function CountOccurrences(text As String, searchFor As String) As Integer
-		  // Count how many times searchFor appears in text
-		  
-		  Var count As Integer = 0
-		  Var pos As Integer = 0
-		  
-		  Do
-		    pos = text.IndexOf(pos, searchFor)
-		    If pos >= 0 Then
-		      count = count + 1
-		      pos = pos + searchFor.Length
-		    End If
-		  Loop Until pos < 0
-		  
-		  Return count
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function GetMethodMetrics(methods() As CodeElement) As MethodMetrics()
-		  // Calculate complexity metrics for all methods
-		  
-		  Var metrics() As MethodMetrics
-		  
-		  For Each method As CodeElement In methods
-		    Var m As New MethodMetrics
-		    m.MethodName = method.FullPath
-		    m.Element = method
-		    
-		    // Lines of Code
-		    If method.Code.Trim <> "" Then
-		      Var lines() As String = method.Code.Split(EndOfLine)
-		      Var nonEmptyLines As Integer = 0
-		      For Each line As String In lines
-		        If line.Trim <> "" Then
-		          nonEmptyLines = nonEmptyLines + 1
-		        End If
-		      Next
-		      m.LinesOfCode = nonEmptyLines
-		    Else
-		      m.LinesOfCode = 0
-		    End If
-		    
-		    // Cyclomatic Complexity
-		    If method.Code.Trim <> "" Then
-		      m.Complexity = CalculateCyclomaticComplexity(method.Code)
-		    Else
-		      m.Complexity = 1
-		    End If
-		    
-		    // Call Depth
-		    m.CallDepth = method.CallsTo.Count
-		    
-		    // Call Chain Depth
-		    Var visited As New Dictionary
-		    m.CallChainDepth = CalculateCallChainDepth(method, visited, 0)
-		    
-		    metrics.Add(m)
-		  Next
-		  
-		  Return metrics
 		End Function
 	#tag EndMethod
 

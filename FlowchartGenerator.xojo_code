@@ -1,6 +1,38 @@
 #tag Class
 Protected Class FlowchartGenerator
 	#tag Method, Flags = &h0
+		Sub CalculateCompactLayout(elements() As CodeElement)
+		  // Compact grid layout with reduced spacing and more items per row
+		  Var x As Integer = PageMargin
+		  Var y As Integer = PageMargin
+		  Var maxHeightInRow As Integer = 0
+		  Var itemsPerRow As Integer = 5  // More items per row
+		  Var itemCount As Integer = 0
+		  Var compactHorizontalSpacing As Integer = 30  // Reduced from 50
+		  Var compactVerticalSpacing As Integer = 50    // Reduced from 80
+		  
+		  For Each element As CodeElement In elements
+		    element.X = x
+		    element.Y = y
+		    
+		    itemCount = itemCount + 1
+		    x = x + element.Width + compactHorizontalSpacing
+		    
+		    If element.Height > maxHeightInRow Then
+		      maxHeightInRow = element.Height
+		    End If
+		    
+		    // Move to next row
+		    If itemCount Mod itemsPerRow = 0 Then
+		      x = PageMargin
+		      y = y + maxHeightInRow + compactVerticalSpacing
+		      maxHeightInRow = 0
+		    End If
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub CalculateHierarchicalLayout(elements() As CodeElement)
 		  // Group elements by type for hierarchical arrangement
 		  Var modules() As CodeElement
@@ -76,38 +108,6 @@ Protected Class FlowchartGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub CalculateCompactLayout(elements() As CodeElement)
-		  // Compact grid layout with reduced spacing and more items per row
-		  Var x As Integer = PageMargin
-		  Var y As Integer = PageMargin
-		  Var maxHeightInRow As Integer = 0
-		  Var itemsPerRow As Integer = 5  // More items per row
-		  Var itemCount As Integer = 0
-		  Var compactHorizontalSpacing As Integer = 30  // Reduced from 50
-		  Var compactVerticalSpacing As Integer = 50    // Reduced from 80
-		  
-		  For Each element As CodeElement In elements
-		    element.X = x
-		    element.Y = y
-		    
-		    itemCount = itemCount + 1
-		    x = x + element.Width + compactHorizontalSpacing
-		    
-		    If element.Height > maxHeightInRow Then
-		      maxHeightInRow = element.Height
-		    End If
-		    
-		    // Move to next row
-		    If itemCount Mod itemsPerRow = 0 Then
-		      x = PageMargin
-		      y = y + maxHeightInRow + compactVerticalSpacing
-		      maxHeightInRow = 0
-		    End If
-		  Next
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
 		Sub Constructor()
 		  // Initialize with default values
 		  PageWidth = 842  // A4 landscape
@@ -163,6 +163,49 @@ Protected Class FlowchartGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub DrawArrowWithOffset(g As Graphics, fromElement As CodeElement, toElement As CodeElement, pageYOffset As Integer)
+		  Var x1 As Integer = fromElement.X + (fromElement.Width / 2)
+		  Var y1 As Integer = (fromElement.Y - pageYOffset) + fromElement.Height
+		  Var x2 As Integer = toElement.X + (toElement.Width / 2)
+		  Var y2 As Integer = toElement.Y - pageYOffset
+		  
+		  // Draw thicker line
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.PenSize = 2
+		  g.DrawLine(x1, y1, x2, y2)
+		  
+		  // Draw larger filled arrowhead triangle
+		  Var arrowSize As Integer = 15  // Increased from 10
+		  Var angle As Double = ATan2(y2 - y1, x2 - x1)
+		  
+		  // Calculate three points of the arrowhead triangle
+		  Var tipX1 As Double = x2 - arrowSize * Cos(angle - 0.4)
+		  Var tipY1 As Double = y2 - arrowSize * Sin(angle - 0.4)
+		  Var tipX2 As Double = x2 - arrowSize * Cos(angle + 0.4)
+		  Var tipY2 As Double = y2 - arrowSize * Sin(angle + 0.4)
+		  
+		  // Create path for the triangle
+		  Var arrowPath As New GraphicsPath
+		  arrowPath.MoveToPoint(x2, y2)
+		  arrowPath.AddLineToPoint(tipX1, tipY1)
+		  arrowPath.AddLineToPoint(tipX2, tipY2)
+		  arrowPath.AddLineToPoint(x2, y2)
+		  
+		  // Draw filled triangle in darker color
+		  g.DrawingColor = Color.RGB(50, 50, 50)
+		  g.FillPath(arrowPath)
+		  
+		  // Draw border around arrowhead for better visibility
+		  g.DrawingColor = Color.Black
+		  g.PenSize = 1
+		  g.DrawPath(arrowPath)
+		  
+		  // Reset pen size
+		  g.PenSize = 1
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Sub DrawConnections(g As Graphics, elements() As CodeElement)
 		  // Draw all relationships
 		  For Each element As CodeElement In elements
@@ -170,6 +213,39 @@ Protected Class FlowchartGenerator
 		      DrawArrow(g, element, target)
 		    Next
 		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub DrawLegend(g As Graphics)
+		  Var legendX As Integer = PageWidth - 220
+		  Var legendY As Integer = 40
+		  Var boxSize As Integer = 12
+		  
+		  g.FontSize = 8
+		  g.Bold = False
+		  
+		  // Used CLASS
+		  g.DrawingColor = Color.RGB(200, 220, 255)
+		  g.FillRectangle(legendX, legendY, boxSize, boxSize)
+		  g.DrawingColor = Color.Black
+		  g.DrawText("Class (used)", legendX + boxSize + 5, legendY + 10)
+		  
+		  legendY = legendY + 18
+		  
+		  // Used METHOD
+		  g.DrawingColor = Color.RGB(220, 255, 220)
+		  g.FillRectangle(legendX, legendY, boxSize, boxSize)
+		  g.DrawingColor = Color.Black
+		  g.DrawText("Method (used)", legendX + boxSize + 5, legendY + 10)
+		  
+		  legendY = legendY + 18
+		  
+		  // Unused
+		  g.DrawingColor = Color.RGB(255, 200, 200)
+		  g.FillRectangle(legendX, legendY, boxSize, boxSize)
+		  g.DrawingColor = Color.Black
+		  g.DrawText("Unused", legendX + boxSize + 5, legendY + 10)
 		End Sub
 	#tag EndMethod
 
@@ -261,120 +337,6 @@ Protected Class FlowchartGenerator
 		End Sub
 	#tag EndMethod
 
-	#tag Method, Flags = &h0
-		Function GenerateFlowchartPDF(elements() As CodeElement, outputFile As FolderItem, layoutType As String, includeRelationships As Boolean) As Boolean
-		  Try
-		    // Calculate layout based on type
-		    Select Case layoutType
-		    Case "Hierarchical"
-		      CalculateHierarchicalLayout(elements)
-		    Case "Simple"
-		      CalculateSimpleLayout(elements)
-		    Case "Compact"
-		      CalculateCompactLayout(elements)
-		    Else
-		      CalculateSimpleLayout(elements)
-		    End Select
-		    
-		    // Determine how tall the content is
-		    Var maxY As Integer = 0
-		    For Each element As CodeElement In elements
-		      Var elementMaxY As Integer = element.Y + element.Height
-		      If elementMaxY > maxY Then
-		        maxY = elementMaxY
-		      End If
-		    Next
-		    
-		    // Add margins
-		    Var totalHeight As Integer = maxY + (2 * PageMargin)
-		    
-		    // Create PDF with custom page size
-		    Var pdf As New PDFDocument(PageWidth, totalHeight)
-		    Var g As Graphics = pdf.Graphics
-		    
-		    // Set white background
-		    g.DrawingColor = Color.White
-		    g.FillRectangle(0, 0, PageWidth, totalHeight)
-		    
-		    // Draw title at top first
-		    g.FontSize = 14
-		    g.Bold = True
-		    g.DrawingColor = Color.Black
-		    g.DrawText("Project Code Flowchart", PageMargin, 20)
-		    
-		    // Draw legend
-		    DrawLegend(g)
-		    
-		    // Draw connections first (so they appear behind boxes)
-		    If includeRelationships Then
-		      For Each element As CodeElement In elements
-		        For Each target As CodeElement In element.CallsTo
-		          DrawArrow(g, element, target)
-		        Next
-		      Next
-		    End If
-		    
-		    // Draw all nodes
-		    For Each element As CodeElement In elements
-		      DrawNode(g, element)
-		    Next
-		    
-		    // Save PDF
-		    pdf.Save(outputFile)
-		    Return True
-		    
-		  Catch e As RuntimeException
-		    System.DebugLog("Error generating PDF: " + e.Message)
-		    Return False
-		  End Try
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub DrawLegend(g As Graphics)
-		  Var legendX As Integer = PageWidth - 220
-		  Var legendY As Integer = 40
-		  Var boxSize As Integer = 12
-		  
-		  g.FontSize = 8
-		  g.Bold = False
-		  
-		  // Used CLASS
-		  g.DrawingColor = Color.RGB(200, 220, 255)
-		  g.FillRectangle(legendX, legendY, boxSize, boxSize)
-		  g.DrawingColor = Color.Black
-		  g.DrawText("Class (used)", legendX + boxSize + 5, legendY + 10)
-		  
-		  legendY = legendY + 18
-		  
-		  // Used METHOD
-		  g.DrawingColor = Color.RGB(220, 255, 220)
-		  g.FillRectangle(legendX, legendY, boxSize, boxSize)
-		  g.DrawingColor = Color.Black
-		  g.DrawText("Method (used)", legendX + boxSize + 5, legendY + 10)
-		  
-		  legendY = legendY + 18
-		  
-		  // Unused
-		  g.DrawingColor = Color.RGB(255, 200, 200)
-		  g.FillRectangle(legendX, legendY, boxSize, boxSize)
-		  g.DrawingColor = Color.Black
-		  g.DrawText("Unused", legendX + boxSize + 5, legendY + 10)
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function IsElementOnPage(element As CodeElement, pageYOffset As Integer, pageHeight As Integer) As Boolean
-		  Var elementTop As Integer = element.Y
-		  Var elementBottom As Integer = element.Y + element.Height
-		  Var pageTop As Integer = pageYOffset
-		  Var pageBottom As Integer = pageYOffset + pageHeight
-		  
-		  // Check if element overlaps with page
-		  Return Not (elementBottom < pageTop Or elementTop > pageBottom)
-		End Function
-	#tag EndMethod
-
 	#tag Method, Flags = &h21
 		Private Sub DrawNodeWithOffset(g As Graphics, element As CodeElement, pageYOffset As Integer)
 		  // Adjust Y coordinate for current page
@@ -450,47 +412,73 @@ Protected Class FlowchartGenerator
 		End Sub
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Sub DrawArrowWithOffset(g As Graphics, fromElement As CodeElement, toElement As CodeElement, pageYOffset As Integer)
-		  Var x1 As Integer = fromElement.X + (fromElement.Width / 2)
-		  Var y1 As Integer = (fromElement.Y - pageYOffset) + fromElement.Height
-		  Var x2 As Integer = toElement.X + (toElement.Width / 2)
-		  Var y2 As Integer = toElement.Y - pageYOffset
-		  
-		  // Draw thicker line
-		  g.DrawingColor = Color.RGB(100, 100, 100)
-		  g.PenSize = 2
-		  g.DrawLine(x1, y1, x2, y2)
-		  
-		  // Draw larger filled arrowhead triangle
-		  Var arrowSize As Integer = 15  // Increased from 10
-		  Var angle As Double = ATan2(y2 - y1, x2 - x1)
-		  
-		  // Calculate three points of the arrowhead triangle
-		  Var tipX1 As Double = x2 - arrowSize * Cos(angle - 0.4)
-		  Var tipY1 As Double = y2 - arrowSize * Sin(angle - 0.4)
-		  Var tipX2 As Double = x2 - arrowSize * Cos(angle + 0.4)
-		  Var tipY2 As Double = y2 - arrowSize * Sin(angle + 0.4)
-		  
-		  // Create path for the triangle
-		  Var arrowPath As New GraphicsPath
-		  arrowPath.MoveToPoint(x2, y2)
-		  arrowPath.AddLineToPoint(tipX1, tipY1)
-		  arrowPath.AddLineToPoint(tipX2, tipY2)
-		  arrowPath.AddLineToPoint(x2, y2)
-		  
-		  // Draw filled triangle in darker color
-		  g.DrawingColor = Color.RGB(50, 50, 50)
-		  g.FillPath(arrowPath)
-		  
-		  // Draw border around arrowhead for better visibility
-		  g.DrawingColor = Color.Black
-		  g.PenSize = 1
-		  g.DrawPath(arrowPath)
-		  
-		  // Reset pen size
-		  g.PenSize = 1
-		End Sub
+	#tag Method, Flags = &h0
+		Function GenerateFlowchartPDF(elements() As CodeElement, outputFile As FolderItem, layoutType As String, includeRelationships As Boolean) As Boolean
+		  Try
+		    // Calculate layout based on type
+		    Select Case layoutType
+		    Case "Hierarchical"
+		      CalculateHierarchicalLayout(elements)
+		    Case "Simple"
+		      CalculateSimpleLayout(elements)
+		    Case "Compact"
+		      CalculateCompactLayout(elements)
+		    Else
+		      CalculateSimpleLayout(elements)
+		    End Select
+		    
+		    // Determine how tall the content is
+		    Var maxY As Integer = 0
+		    For Each element As CodeElement In elements
+		      Var elementMaxY As Integer = element.Y + element.Height
+		      If elementMaxY > maxY Then
+		        maxY = elementMaxY
+		      End If
+		    Next
+		    
+		    // Add margins
+		    Var totalHeight As Integer = maxY + (2 * PageMargin)
+		    
+		    // Create PDF with custom page size
+		    Var pdf As New PDFDocument(PageWidth, totalHeight)
+		    Var g As Graphics = pdf.Graphics
+		    
+		    // Set white background
+		    g.DrawingColor = Color.White
+		    g.FillRectangle(0, 0, PageWidth, totalHeight)
+		    
+		    // Draw title at top first
+		    g.FontSize = 14
+		    g.Bold = True
+		    g.DrawingColor = Color.Black
+		    g.DrawText("Project Code Flowchart", PageMargin, 20)
+		    
+		    // Draw legend
+		    DrawLegend(g)
+		    
+		    // Draw connections first (so they appear behind boxes)
+		    If includeRelationships Then
+		      For Each element As CodeElement In elements
+		        For Each target As CodeElement In element.CallsTo
+		          DrawArrow(g, element, target)
+		        Next
+		      Next
+		    End If
+		    
+		    // Draw all nodes
+		    For Each element As CodeElement In elements
+		      DrawNode(g, element)
+		    Next
+		    
+		    // Save PDF
+		    pdf.Save(outputFile)
+		    Return True
+		    
+		  Catch e As RuntimeException
+		    System.DebugLog("Error generating PDF: " + e.Message)
+		    Return False
+		  End Try
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -505,6 +493,18 @@ Protected Class FlowchartGenerator
 		  Next
 		  
 		  Return maxY
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsElementOnPage(element As CodeElement, pageYOffset As Integer, pageHeight As Integer) As Boolean
+		  Var elementTop As Integer = element.Y
+		  Var elementBottom As Integer = element.Y + element.Height
+		  Var pageTop As Integer = pageYOffset
+		  Var pageBottom As Integer = pageYOffset + pageHeight
+		  
+		  // Check if element overlaps with page
+		  Return Not (elementBottom < pageTop Or elementTop > pageBottom)
 		End Function
 	#tag EndMethod
 
