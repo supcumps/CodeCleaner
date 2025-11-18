@@ -15,6 +15,7 @@ Class=FlowchartGenerator;FlowchartGenerator.xojo_code;&h000000005EDEEFFF;&h00000
 Module=CodeCleanWindowHelpers;CodeCleanWindowHelpers.xojo_code;&h00000000552067FF;&h0000000000000000;false
 Class=ReportGenerator;ReportGenerator.xojo_code;&h0000000048B107FF;&h0000000000000000;false
 Class=MethodMetrics;MethodMetrics.xojo_code;&h0000000017629FFF;&h0000000000000000;false
+Class=ErrorPattern;ErrorPattern.xojo_code;&h000000007C3EB7FF;&h0000000000000000;false
 DefaultWindow=CodeCleanWindow
 AppMenuBar=MainMenuBar
 MajorVersion=1

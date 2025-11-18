@@ -1,27 +1,6 @@
 #tag Class
 Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h21
-		Private Sub AnalyzeFileForRelationships(content As String)
-		  // Track context and find method calls
-		  
-		  Var lines() As String = content.Split(EndOfLine)
-		  Var currentModule As String = ""
-		  Var currentClass As String = ""
-		  Var currentMethodFullPath As String = ""
-		  Var inMethod As Boolean = False
-		  
-		  For Each line As String In lines
-		    line = line.Trim
-		    
-		    If line.Trim = "" Then Continue
-		    
-		    ProcessLineForRelationships(line, currentModule, currentClass, _
-		    currentMethodFullPath, inMethod)
-		  Next
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
 		Private Function BuildFullName(itemType As String, itemName As String, currentModule As String, currentClass As String) As String
 		  Var fullName As String = itemType + ": "
 		  
@@ -36,25 +15,6 @@ Protected Class ProjectAnalyzer
 		  End If
 		  
 		  Return fullName
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function BuildMethodFullPath(line As String, currentModule As String, currentClass As String) As String
-		  // Build the full path for a method based on context
-		  
-		  Var methodName As String = ExtractMethodName(line)
-		  If methodName.Trim = "" Then Return ""
-		  
-		  If currentModule.Trim <> "" And currentClass.Trim <> "" Then
-		    Return currentModule + "." + currentClass + "." + methodName
-		  ElseIf currentModule.Trim <> "" Then
-		    Return currentModule + "." + methodName
-		  ElseIf currentClass.Trim <> "" Then
-		    Return currentClass + "." + methodName
-		  Else
-		    Return methodName
-		  End If
 		End Function
 	#tag EndMethod
 
@@ -347,51 +307,11 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Sub HandleEndTag(line As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String)
-		  // Handle different types of end tags
-		  
-		  If line.BeginsWith("#tag EndModule") Then
-		    currentModule = ""
-		    currentClass = ""
-		    currentInterface = ""
-		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		    
-		  ElseIf line.BeginsWith("#tag EndClass") Then
-		    currentClass = ""
-		    currentInterface = ""
-		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		    
-		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
-		    // Save the accumulated code to the method element
-		    If inMethodOrFunction And currentMethodFullPath.Trim <> "" Then
-		      Var methodElement As CodeElement = FindElementByFullPath(currentMethodFullPath)
-		      If methodElement <> Nil Then
-		        methodElement.Code = currentMethodCode
-		        System.DebugLog("Stored code for method: " + currentMethodFullPath + " (" + currentMethodCode.Length.ToString + " chars)")
-		      End If
-		    End If
-		    
-		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
 		Private Function IsClassDeclaration(line As String) As Boolean
 		  Return line.BeginsWith("Protected Class ") Or _
 		  line.BeginsWith("Public Class ") Or _
 		  line.BeginsWith("Private Class ") Or _
 		  line.BeginsWith("Class ")
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Function IsEndTag(line As String) As Boolean
-		  // Check if line is any kind of end tag
-		  Return line.BeginsWith("#tag End") Or _
-		  line = "End" Or _
-		  line = "End Sub" Or _
-		  line = "End Function"
 		End Function
 	#tag EndMethod
 
@@ -544,6 +464,103 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub ProcessLine(trimmedLine As String, fullLine As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, fileName As String)
+		  // Process a single line and update context accordingly
+		  
+		  If IsModuleDeclaration(trimmedLine) Then
+		    currentModule = ProcessModuleDeclaration(trimmedLine, fileName)
+		    currentClass = ""
+		    currentInterface = ""
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf IsInterfaceDeclaration(trimmedLine) Then
+		    currentInterface = ProcessInterfaceDeclaration(trimmedLine, currentModule, fileName)
+		    currentClass = currentInterface
+		    
+		  ElseIf IsClassDeclaration(trimmedLine) Then
+		    currentClass = ProcessClassDeclaration(trimmedLine, currentModule, fileName)
+		    currentInterface = ""
+		    
+		  ElseIf IsMethodOrFunctionDeclaration(trimmedLine) Then
+		    StartMethodCapture(trimmedLine, currentModule, currentClass, fileName, _
+		    inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf IsPropertyDeclaration(trimmedLine) Then
+		    ProcessPropertyDeclaration(trimmedLine, currentModule, currentClass, fileName)
+		    
+		  ElseIf IsVariableDeclaration(trimmedLine) And Not inMethodOrFunction Then
+		    ProcessVariableDeclaration(trimmedLine, currentModule, currentClass, fileName)
+		    
+		  ElseIf IsEndTag(trimmedLine) Then
+		    HandleEndTag(trimmedLine, inMethodOrFunction, currentMethodFullPath, currentMethodCode, _
+		    currentModule, currentClass, currentInterface)
+		    
+		  ElseIf inMethodOrFunction Then
+		    // Accumulate code lines while inside a method
+		    currentMethodCode = currentMethodCode + fullLine + EndOfLine
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsEndTag(line As String) As Boolean
+		  // Check if line is any kind of end tag
+		  Return line.BeginsWith("#tag End") Or _
+		  line = "End" Or _
+		  line = "End Sub" Or _
+		  line = "End Function"
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ResetMethodContext(ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
+		  // Reset method tracking variables
+		  inMethodOrFunction = False
+		  currentMethodFullPath = ""
+		  currentMethodCode = ""
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub StartMethodCapture(line As String, currentModule As String, currentClass As String, fileName As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
+		  // Start capturing a method's code
+		  currentMethodFullPath = ProcessMethodDeclaration(line, currentModule, currentClass, fileName)
+		  inMethodOrFunction = True
+		  currentMethodCode = ""
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub HandleEndTag(line As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String)
+		  // Handle different types of end tags
+		  
+		  If line.BeginsWith("#tag EndModule") Then
+		    currentModule = ""
+		    currentClass = ""
+		    currentInterface = ""
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf line.BeginsWith("#tag EndClass") Then
+		    currentClass = ""
+		    currentInterface = ""
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
+		    // Save the accumulated code to the method element
+		    If inMethodOrFunction And currentMethodFullPath.Trim <> "" Then
+		      Var methodElement As CodeElement = FindElementByFullPath(currentMethodFullPath)
+		      If methodElement <> Nil Then
+		        methodElement.Code = currentMethodCode
+		        System.DebugLog("Stored code for method: " + currentMethodFullPath + " (" + currentMethodCode.Length.ToString + " chars)")
+		      End If
+		    End If
+		    
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function ProcessClassDeclaration(line As String, currentModule As String, fileName As String) As String
 		  Var className As String = line
 		  
@@ -614,74 +631,6 @@ Protected Class ProjectAnalyzer
 		  
 		  Return interfaceName
 		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub ProcessLine(trimmedLine As String, fullLine As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, fileName As String)
-		  // Process a single line and update context accordingly
-		  
-		  If IsModuleDeclaration(trimmedLine) Then
-		    currentModule = ProcessModuleDeclaration(trimmedLine, fileName)
-		    currentClass = ""
-		    currentInterface = ""
-		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		    
-		  ElseIf IsInterfaceDeclaration(trimmedLine) Then
-		    currentInterface = ProcessInterfaceDeclaration(trimmedLine, currentModule, fileName)
-		    currentClass = currentInterface
-		    
-		  ElseIf IsClassDeclaration(trimmedLine) Then
-		    currentClass = ProcessClassDeclaration(trimmedLine, currentModule, fileName)
-		    currentInterface = ""
-		    
-		  ElseIf IsMethodOrFunctionDeclaration(trimmedLine) Then
-		    StartMethodCapture(trimmedLine, currentModule, currentClass, fileName, _
-		    inMethodOrFunction, currentMethodFullPath, currentMethodCode)
-		    
-		  ElseIf IsPropertyDeclaration(trimmedLine) Then
-		    ProcessPropertyDeclaration(trimmedLine, currentModule, currentClass, fileName)
-		    
-		  ElseIf IsVariableDeclaration(trimmedLine) And Not inMethodOrFunction Then
-		    ProcessVariableDeclaration(trimmedLine, currentModule, currentClass, fileName)
-		    
-		  ElseIf IsEndTag(trimmedLine) Then
-		    HandleEndTag(trimmedLine, inMethodOrFunction, currentMethodFullPath, currentMethodCode, _
-		    currentModule, currentClass, currentInterface)
-		    
-		  ElseIf inMethodOrFunction Then
-		    // Accumulate code lines while inside a method
-		    currentMethodCode = currentMethodCode + fullLine + EndOfLine
-		  End If
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Private Sub ProcessLineForRelationships(line As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentMethodFullPath As String, ByRef inMethod As Boolean)
-		  // Process a line to track context and detect relationships
-		  
-		  If IsModuleDeclaration(line) Then
-		    currentModule = ExtractModuleName(line)
-		    currentClass = ""
-		    inMethod = False
-		    currentMethodFullPath = ""
-		    
-		  ElseIf IsClassDeclaration(line) Then
-		    currentClass = ExtractClassName(line)
-		    inMethod = False
-		    currentMethodFullPath = ""
-		    
-		  ElseIf IsMethodOrFunctionDeclaration(line) Then
-		    currentMethodFullPath = BuildMethodFullPath(line, currentModule, currentClass)
-		    inMethod = True
-		    
-		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
-		    inMethod = False
-		    
-		  ElseIf inMethod And currentMethodFullPath.Trim <> "" Then
-		    // Look for method calls in this line
-		    DetectMethodCalls(line, currentMethodFullPath)
-		  End If
-		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -821,15 +770,6 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Sub ResetMethodContext(ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
-		  // Reset method tracking variables
-		  inMethodOrFunction = False
-		  currentMethodFullPath = ""
-		  currentMethodCode = ""
-		End Sub
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
 		Private Sub ScanFileForRelationships(item As FolderItem)
 		  // REFACTORED: Now broken into focused helper methods
 		  
@@ -851,6 +791,75 @@ Protected Class ProjectAnalyzer
 		    System.DebugLog("Error scanning file for relationships: " + item.Name)
 		  End Try
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub AnalyzeFileForRelationships(content As String)
+		  // Track context and find method calls
+		  
+		  Var lines() As String = content.Split(EndOfLine)
+		  Var currentModule As String = ""
+		  Var currentClass As String = ""
+		  Var currentMethodFullPath As String = ""
+		  Var inMethod As Boolean = False
+		  
+		  For Each line As String In lines
+		    line = line.Trim
+		    
+		    If line.Trim = "" Then Continue
+		    
+		    ProcessLineForRelationships(line, currentModule, currentClass, _
+		    currentMethodFullPath, inMethod)
+		  Next
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub ProcessLineForRelationships(line As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentMethodFullPath As String, ByRef inMethod As Boolean)
+		  // Process a line to track context and detect relationships
+		  
+		  If IsModuleDeclaration(line) Then
+		    currentModule = ExtractModuleName(line)
+		    currentClass = ""
+		    inMethod = False
+		    currentMethodFullPath = ""
+		    
+		  ElseIf IsClassDeclaration(line) Then
+		    currentClass = ExtractClassName(line)
+		    inMethod = False
+		    currentMethodFullPath = ""
+		    
+		  ElseIf IsMethodOrFunctionDeclaration(line) Then
+		    currentMethodFullPath = BuildMethodFullPath(line, currentModule, currentClass)
+		    inMethod = True
+		    
+		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
+		    inMethod = False
+		    
+		  ElseIf inMethod And currentMethodFullPath.Trim <> "" Then
+		    // Look for method calls in this line
+		    DetectMethodCalls(line, currentMethodFullPath)
+		  End If
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function BuildMethodFullPath(line As String, currentModule As String, currentClass As String) As String
+		  // Build the full path for a method based on context
+		  
+		  Var methodName As String = ExtractMethodName(line)
+		  If methodName.Trim = "" Then Return ""
+		  
+		  If currentModule.Trim <> "" And currentClass.Trim <> "" Then
+		    Return currentModule + "." + currentClass + "." + methodName
+		  ElseIf currentModule.Trim <> "" Then
+		    Return currentModule + "." + methodName
+		  ElseIf currentClass.Trim <> "" Then
+		    Return currentClass + "." + methodName
+		  Else
+		    Return methodName
+		  End If
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -914,13 +923,222 @@ Protected Class ProjectAnalyzer
 		End Sub
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Sub StartMethodCapture(line As String, currentModule As String, currentClass As String, fileName As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
-		  // Start capturing a method's code
-		  currentMethodFullPath = ProcessMethodDeclaration(line, currentModule, currentClass, fileName)
-		  inMethodOrFunction = True
-		  currentMethodCode = ""
+	#tag Method, Flags = &h0
+		Sub AnalyzeErrorHandling()
+		  // Analyze error handling patterns in all methods
+		  
+		  System.DebugLog("=== Starting Error Handling Analysis ===")
+		  
+		  For Each element As CodeElement In MethodElements
+		    If element.Code.Trim = "" Then Continue
+		    
+		    // Detect error handling patterns
+		    element.HasTryCatch = DetectTryCatchBlocks(element.Code)
+		    element.HasDatabaseOperations = DetectDatabaseOperations(element.Code)
+		    element.HasFileOperations = DetectFileOperations(element.Code)
+		    element.HasNetworkOperations = DetectNetworkOperations(element.Code)
+		    element.HasTypeConversions = DetectTypeConversions(element.Code)
+		    
+		    // Create error patterns for risky operations without error handling
+		    If Not element.HasTryCatch Then
+		      If element.HasDatabaseOperations Then
+		        Var pattern As New ErrorPattern
+		        pattern.Element = element
+		        pattern.PatternType = "DATABASE"
+		        pattern.RiskLevel = "HIGH"
+		        pattern.Description = "Database operations without Try/Catch"
+		        element.RiskyPatterns.Add(pattern)
+		      End If
+		      
+		      If element.HasFileOperations Then
+		        Var pattern As New ErrorPattern
+		        pattern.Element = element
+		        pattern.PatternType = "FILE_IO"
+		        pattern.RiskLevel = "HIGH"
+		        pattern.Description = "File operations without Try/Catch"
+		        element.RiskyPatterns.Add(pattern)
+		      End If
+		      
+		      If element.HasNetworkOperations Then
+		        Var pattern As New ErrorPattern
+		        pattern.Element = element
+		        pattern.PatternType = "NETWORK"
+		        pattern.RiskLevel = "HIGH"
+		        pattern.Description = "Network operations without Try/Catch"
+		        element.RiskyPatterns.Add(pattern)
+		      End If
+		      
+		      If element.HasTypeConversions Then
+		        Var pattern As New ErrorPattern
+		        pattern.Element = element
+		        pattern.PatternType = "TYPE_CONVERSION"
+		        pattern.RiskLevel = "MEDIUM"
+		        pattern.Description = "Type conversions without error handling"
+		        element.RiskyPatterns.Add(pattern)
+		      End If
+		    End If
+		  Next
+		  
+		  System.DebugLog("=== Error Handling Analysis Complete ===")
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectTryCatchBlocks(code As String) As Boolean
+		  // Detect if code contains Try/Catch error handling
+		  
+		  Var upperCode As String = code.Uppercase
+		  
+		  If upperCode.Contains("TRY") And upperCode.Contains("CATCH") Then
+		    Return True
+		  End If
+		  
+		  Return False
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectDatabaseOperations(code As String) As Boolean
+		  // Detect database-related operations
+		  
+		  Var upperCode As String = code.Uppercase
+		  
+		  // Common Xojo database patterns
+		  If upperCode.Contains("SQLSELECT") Then Return True
+		  If upperCode.Contains("SQLEXECUTE") Then Return True
+		  If upperCode.Contains(".SELECT(") Then Return True
+		  If upperCode.Contains(".SELECTSQL") Then Return True
+		  If upperCode.Contains(".EXECUTESQL") Then Return True
+		  If upperCode.Contains("DATABASE.") Then Return True
+		  If upperCode.Contains("RECORDSET") Then Return True
+		  If upperCode.Contains(".PREPARE") Then Return True
+		  If upperCode.Contains("PREPAREDSTATEMENT") Then Return True
+		  If upperCode.Contains(".BIND(") Then Return True
+		  
+		  Return False
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectFileOperations(code As String) As Boolean
+		  // Detect file I/O operations
+		  
+		  Var upperCode As String = code.Uppercase
+		  
+		  // File operations
+		  If upperCode.Contains("FOLDERITEM") Then Return True
+		  If upperCode.Contains("TEXTINPUTSTREAM") Then Return True
+		  If upperCode.Contains("TEXTOUTPUTSTREAM") Then Return True
+		  If upperCode.Contains("BINARYSTREAM") Then Return True
+		  If upperCode.Contains(".READ") And upperCode.Contains("FILE") Then Return True
+		  If upperCode.Contains(".WRITE") And upperCode.Contains("FILE") Then Return True
+		  If upperCode.Contains(".OPENASTEXT") Then Return True
+		  If upperCode.Contains(".CREATEASTEXT") Then Return True
+		  If upperCode.Contains(".DELETE") And upperCode.Contains("FILE") Then Return True
+		  If upperCode.Contains(".COPY") And upperCode.Contains("FILE") Then Return True
+		  If upperCode.Contains(".MOVE") And upperCode.Contains("FILE") Then Return True
+		  
+		  Return False
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectNetworkOperations(code As String) As Boolean
+		  // Detect network-related operations
+		  
+		  Var upperCode As String = code.Uppercase
+		  
+		  // Network operations
+		  If upperCode.Contains("URLCONNECTION") Then Return True
+		  If upperCode.Contains("SOCKET") Then Return True
+		  If upperCode.Contains("HTTPSOCKET") Then Return True
+		  If upperCode.Contains("TCPSOCKET") Then Return True
+		  If upperCode.Contains(".SEND") And upperCode.Contains("HTTP") Then Return True
+		  If upperCode.Contains(".GET") And upperCode.Contains("HTTP") Then Return True
+		  If upperCode.Contains(".POST") And upperCode.Contains("HTTP") Then Return True
+		  If upperCode.Contains("XMLHTTPREQUEST") Then Return True
+		  
+		  Return False
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectTypeConversions(code As String) As Boolean
+		  // Detect type conversion operations that could fail
+		  
+		  Var upperCode As String = code.Uppercase
+		  
+		  // Type conversions
+		  If upperCode.Contains("VAL(") Then Return True
+		  If upperCode.Contains("CDBL(") Then Return True
+		  If upperCode.Contains("CTYPE(") Then Return True
+		  If upperCode.Contains(".TOINTEGER") Then Return True
+		  If upperCode.Contains(".TODOUBLE") Then Return True
+		  If upperCode.Contains(".FROMSTRING") Then Return True
+		  If upperCode.Contains("INTEGER.FROMSTRING") Then Return True
+		  If upperCode.Contains("DOUBLE.FROMSTRING") Then Return True
+		  If upperCode.Contains("PARSEDATE") Then Return True
+		  
+		  // Division (potential divide by zero)
+		  If upperCode.Contains(" / ") Then Return True
+		  If upperCode.Contains(" \\ ") Then Return True
+		  
+		  Return False
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function GetErrorHandlingStats() As Dictionary
+		  // Calculate error handling statistics
+		  
+		  Var stats As New Dictionary
+		  
+		  Var totalMethods As Integer = 0
+		  Var methodsWithTryCatch As Integer = 0
+		  Var methodsWithRiskyPatterns As Integer = 0
+		  Var highRiskCount As Integer = 0
+		  Var mediumRiskCount As Integer = 0
+		  
+		  Var riskyMethods() As CodeElement
+		  
+		  For Each element As CodeElement In MethodElements
+		    If element.Code.Trim = "" Then Continue
+		    
+		    totalMethods = totalMethods + 1
+		    
+		    If element.HasTryCatch Then
+		      methodsWithTryCatch = methodsWithTryCatch + 1
+		    End If
+		    
+		    If element.RiskyPatterns.Count > 0 Then
+		      methodsWithRiskyPatterns = methodsWithRiskyPatterns + 1
+		      riskyMethods.Add(element)
+		      
+		      For Each pattern As ErrorPattern In element.RiskyPatterns
+		        If pattern.RiskLevel = "HIGH" Then
+		          highRiskCount = highRiskCount + 1
+		        ElseIf pattern.RiskLevel = "MEDIUM" Then
+		          mediumRiskCount = mediumRiskCount + 1
+		        End If
+		      Next
+		    End If
+		  Next
+		  
+		  Var coveragePercent As Integer = 0
+		  If totalMethods > 0 Then
+		    coveragePercent = (methodsWithTryCatch * 100) \ totalMethods
+		  End If
+		  
+		  stats.Value("totalMethods") = totalMethods
+		  stats.Value("methodsWithTryCatch") = methodsWithTryCatch
+		  stats.Value("methodsWithRiskyPatterns") = methodsWithRiskyPatterns
+		  stats.Value("coveragePercent") = coveragePercent
+		  stats.Value("highRiskCount") = highRiskCount
+		  stats.Value("mediumRiskCount") = mediumRiskCount
+		  stats.Value("riskyMethods") = riskyMethods
+		  
+		  Return stats
+		End Function
 	#tag EndMethod
 
 

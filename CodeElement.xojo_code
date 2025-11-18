@@ -40,6 +40,30 @@ Protected Class CodeElement
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		HasTryCatch As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		HasDatabaseOperations As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		HasFileOperations As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		HasNetworkOperations As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		HasTypeConversions As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		RiskyPatterns() As ErrorPattern
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		ElementType As String
 	#tag EndProperty
 
@@ -139,7 +163,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType="MultiLineEditor"
+			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="FullPath"
@@ -147,7 +171,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType="MultiLineEditor"
+			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="ModuleName"
@@ -155,7 +179,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType="MultiLineEditor"
+			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="ParentClass"
@@ -163,7 +187,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType="MultiLineEditor"
+			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="FileName"
@@ -171,7 +195,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType="MultiLineEditor"
+			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="IsUsed"
@@ -228,6 +252,46 @@ Protected Class CodeElement
 			InitialValue=""
 			Type="String"
 			EditorType="MultiLineEditor"
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="HasTryCatch"
+			Visible=false
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="HasDatabaseOperations"
+			Visible=false
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="HasFileOperations"
+			Visible=false
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="HasNetworkOperations"
+			Visible=false
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="HasTypeConversions"
+			Visible=false
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
 		#tag EndViewProperty
 	#tag EndViewBehavior
 End Class

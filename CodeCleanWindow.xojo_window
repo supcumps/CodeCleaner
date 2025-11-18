@@ -352,6 +352,9 @@ End
 		  // Build relationships between elements
 		  mAnalyzer.BuildRelationships(folder)
 		  
+		  // Analyze error handling patterns
+		  mAnalyzer.AnalyzeErrorHandling()
+		  
 		  // TEST: Check if code is being captured
 		  Var methods() As CodeElement = manalyzer.GetMethodElements
 		  System.DebugLog("=== CODE CAPTURE TEST ===")
