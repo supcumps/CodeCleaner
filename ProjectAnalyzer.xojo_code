@@ -1372,10 +1372,10 @@ Protected Class ProjectAnalyzer
 		    case "("
 		      
 		      parenDepth = parenDepth + 1
-		      currentParam = currentParam + c
+		      'currentParam = currentParam + c
 		    case  ")" 
 		      parenDepth = parenDepth - 1
-		      currentParam = currentParam + c
+		      'currentParam = currentParam + c
 		    case "," 
 		      // Found a parameter separator at top level
 		      If currentParam.Trim <> "" Then
