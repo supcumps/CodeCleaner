@@ -16,6 +16,7 @@ Module=CodeCleanWindowHelpers;CodeCleanWindowHelpers.xojo_code;&h00000000552067F
 Class=ReportGenerator;ReportGenerator.xojo_code;&h0000000048B107FF;&h0000000000000000;false
 Class=MethodMetrics;MethodMetrics.xojo_code;&h0000000017629FFF;&h0000000000000000;false
 Class=ErrorPattern;ErrorPattern.xojo_code;&h000000007C3EB7FF;&h0000000000000000;false
+Class=ParsingContext;ParsingContext.xojo_code;&h000000000F91DFFF;&h0000000000000000;false
 DefaultWindow=CodeCleanWindow
 AppMenuBar=MainMenuBar
 MajorVersion=1

@@ -349,18 +349,99 @@ End
 		  // Scan the project
 		  mAnalyzer.ScanProject(folder)
 		  
+		  // After mAnalyzer.ScanProject(folder)
+		  System.DebugLog("=== CHECKING ELEMENTS ===")
+		  
+		  Var all() As CodeElement = mAnalyzer.GetAllElements()
+		  System.DebugLog("GetAllElements: " + all.Count.ToString)
+		  
+		  If all.Count > 0 Then
+		    System.DebugLog("First element: " + all(0).Name + " (Type: " + all(0).ElementType + ")")
+		    System.DebugLog("Second element: " + all(1).Name + " (Type: " + all(1).ElementType + ")")
+		  End If
+		  
 		  // Build relationships between elements
 		  mAnalyzer.BuildRelationships(folder)
 		  
+		  System.DebugLog("=== ELEMENT TYPE CHECK ===")
+		  
+		  all()  = mAnalyzer.GetAllElements()
+		  Var classes() As CodeElement = mAnalyzer.GetClassElements()
+		  Var modules() As CodeElement = mAnalyzer.GetModuleElements()
+		  Var methods() As CodeElement = mAnalyzer.GetMethodElements()
+		  
+		  Var methodsWithCode As Integer = 0
+		  For Each m As CodeElement In methods
+		    If m.Code.Trim <> "" Then
+		      methodsWithCode = methodsWithCode + 1
+		    End If
+		  Next
+		  System.DebugLog("Methods with code: " + methodsWithCode.ToString + " of " + methods.Count.ToString)
+		  System.DebugLog("Methods with calls: " + methods.Count.ToString)  // Will show how many have CallsTo populated
+		  
+		  
+		  System.DebugLog("Total: " + all.Count.ToString)
+		  System.DebugLog("Classes: " + classes.Count.ToString)
+		  System.DebugLog("Modules: " + modules.Count.ToString)
+		  System.DebugLog("Methods: " + methods.Count.ToString)
+		  
+		  // Show first few elements and their types
+		  For i As Integer = 0 To Min(5, all.Count - 1)
+		    System.DebugLog("Element " + i.ToString + ": " + all(i).Name + " (Type: '" + all(i).ElementType + "')")
+		  Next
+		  
 		  // Analyze error handling patterns
 		  mAnalyzer.AnalyzeErrorHandling()
+		  // DEBUG: Test parameter parsing
+		  System.DebugLog("=== PARAMETER PARSING DEBUG ===")
+		  methods() = mAnalyzer.GetMethodElements
+		  Var testCount As Integer = 0
+		  
+		  For Each method As CodeElement In methods
+		    If method.Code.Trim <> "" And testCount < 5 Then  // Test first 5 methods
+		      System.DebugLog("")
+		      System.DebugLog("Method: " + method.FullPath)
+		      System.DebugLog("Code starts with:")
+		      
+		      // Show first 3 lines of code
+		      Var lines() As String = method.Code.Split(EndOfLine)
+		      For i As Integer = 0 To Min(2, lines.Count - 1)
+		        System.DebugLog("  Line " + i.ToString + ": " + lines(i))
+		      Next
+		      
+		      // Test parsing
+		      Var result As Dictionary = mAnalyzer.ParseMethodParameters(method.Code)
+		      Var paramCount As Integer = result.Value("parameterCount")
+		      System.DebugLog("Detected parameters: " + paramCount.ToString)
+		      
+		      testCount = testCount + 1
+		    End If
+		  Next
+		  System.DebugLog("=== END DEBUG ===")
+		  System.DebugLog("=== PARAMETER EXTRACTION TEST ===")
+		  
+		  Var methodsWithParams As Integer = 0
+		  Var totalParams As Integer = 0
+		  
+		  For Each method As CodeElement In methods
+		    If method.ParameterCount > 0 Then
+		      methodsWithParams = methodsWithParams + 1
+		      totalParams = totalParams + method.ParameterCount
+		      System.DebugLog("✓ " + method.Name + ": " + method.ParameterCount.ToString + " params")
+		      System.DebugLog("  Parameters: " + method.Parameters)
+		    End If
+		  Next
+		  
+		  System.DebugLog("")
+		  System.DebugLog("Methods with parameters: " + methodsWithParams.ToString)
+		  System.DebugLog("Total parameters: " + totalParams.ToString)
 		  
 		  // TEST: Check if code is being captured
-		  Var methods() As CodeElement = manalyzer.GetMethodElements
+		  methods() = manalyzer.GetMethodElements
 		  System.DebugLog("=== CODE CAPTURE TEST ===")
 		  System.DebugLog("Total methods found: " + methods.Count.ToString)
 		  
-		  Var methodsWithCode As Integer = 0
+		  methodsWithCode = 0
 		  For Each method As CodeElement In methods
 		    If method.Code.Trim <> "" Then
 		      methodsWithCode = methodsWithCode + 1
@@ -383,7 +464,10 @@ End
 		  ExportButton.Enabled = True
 		  btnGenerateFlowchart.Enabled = True
 		  
-		  MessageBox("Scan complete! Found " + mAnalyzer.AllElements.Count.ToString + " code elements.")
+		  
+		  
+		  Var allElements() As CodeElement = mAnalyzer.GetAllElements()
+		  MessageBox("Scan complete! Found " + allElements.Count.ToString + " code elements.")
 		End Sub
 	#tag EndEvent
 #tag EndEvents

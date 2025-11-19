@@ -7,7 +7,10 @@ Protected Class CodeElement
 		  Self.FullPath = fullPath
 		  Self.FileName = fileName
 		  Self.IsUsed = False
-		  Self.Code = ""  // Initialize empty code
+		  Self.Code = ""
+		  Self.ParameterCount = 0
+		  Self.OptionalParameterCount = 0
+		  Self.Parameters = ""
 		  
 		  // Parse module and class from full path
 		  If fullPath.Contains(".") Then
@@ -20,6 +23,32 @@ Protected Class CodeElement
 		    End If
 		  End If
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function GetComplexityScore() As Integer
+		  // Calculate overall complexity score for ranking
+		  // Higher score = more complex = potentially more resource-intensive
+		  
+		  Var score As Integer = 0
+		  
+		  // Line count contributes to complexity
+		  score = score + LineCount
+		  
+		  // Cyclomatic complexity is weighted heavily (x5)
+		  score = score + (CyclomaticComplexity * 5)
+		  
+		  // Number of outgoing calls (x3)
+		  score = score + (CallsTo.Count * 3)
+		  
+		  // Being called by many methods suggests it's important (x2)
+		  score = score + (CalledBy.Count * 2)
+		  
+		  // Parameter complexity (x2)
+		  score = score + (ParameterCount * 2)
+		  
+		  Return score
+		End Function
 	#tag EndMethod
 
 
@@ -40,27 +69,7 @@ Protected Class CodeElement
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		HasTryCatch As Boolean = False
-	#tag EndProperty
-
-	#tag Property, Flags = &h0
-		HasDatabaseOperations As Boolean = False
-	#tag EndProperty
-
-	#tag Property, Flags = &h0
-		HasFileOperations As Boolean = False
-	#tag EndProperty
-
-	#tag Property, Flags = &h0
-		HasNetworkOperations As Boolean = False
-	#tag EndProperty
-
-	#tag Property, Flags = &h0
-		HasTypeConversions As Boolean = False
-	#tag EndProperty
-
-	#tag Property, Flags = &h0
-		RiskyPatterns() As ErrorPattern
+		CyclomaticComplexity As Integer = 0
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
@@ -76,6 +85,26 @@ Protected Class CodeElement
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		HasDatabaseOperations As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		HasFileOperations As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		HasNetworkOperations As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		HasTryCatch As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		HasTypeConversions As Boolean = False
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		Height As Integer = 60
 	#tag EndProperty
 
@@ -88,6 +117,10 @@ Protected Class CodeElement
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		LineCount As Integer = 0
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		ModuleName As String
 	#tag EndProperty
 
@@ -96,11 +129,27 @@ Protected Class CodeElement
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		OptionalParameterCount As Integer = 0
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		ParameterCount As Integer = 0
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		Parameters As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		Parent As CodeElement
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
 		ParentClass As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		RiskyPatterns() As ErrorPattern
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
@@ -174,7 +223,7 @@ Protected Class CodeElement
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="ModuleName"
+			Name="ParentClass"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
@@ -182,7 +231,7 @@ Protected Class CodeElement
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="ParentClass"
+			Name="ModuleName"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
@@ -246,6 +295,22 @@ Protected Class CodeElement
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
+			Name="LineCount"
+			Visible=false
+			Group="Behavior"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="CyclomaticComplexity"
+			Visible=false
+			Group="Behavior"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
 			Name="Code"
 			Visible=false
 			Group="Behavior"
@@ -292,6 +357,30 @@ Protected Class CodeElement
 			InitialValue="False"
 			Type="Boolean"
 			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="ParameterCount"
+			Visible=false
+			Group="Behavior"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="OptionalParameterCount"
+			Visible=false
+			Group="Behavior"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Parameters"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType="MultiLineEditor"
 		#tag EndViewProperty
 	#tag EndViewBehavior
 End Class

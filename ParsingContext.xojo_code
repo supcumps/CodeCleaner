@@ -1,41 +1,32 @@
 #tag Class
-Protected Class MethodMetrics
+Protected Class ParsingContext
 	#tag Property, Flags = &h0
-		CallChainDepth As Integer
+		CurrentClass As String = ""
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		CallDepth As Integer
+		CurrentInterface As String = ""
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		Complexity As Integer
+		CurrentMethodCode As String = ""
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		Element As CodeElement
+		CurrentMethodFullPath As String = ""
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		LinesOfCode As Integer
+		CurrentModule As String = ""
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		MethodName As String
+		FileName As String = ""
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		ParameterCount As Integer
+		InMethodOrFunction As Boolean = False
 	#tag EndProperty
-
-	#tag Property, Flags = &h0
-		OptionalParameterCount As Integer
-	#tag EndProperty
-
-	#tag Property, Flags = &h0
-		HasTooManyParameters As Boolean = False
-	#tag EndProperty
-
 
 	#tag ViewBehavior
 		#tag ViewProperty
@@ -79,39 +70,47 @@ Protected Class MethodMetrics
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="LinesOfCode"
+			Name="CurrentModule"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
-			Type="Integer"
+			Type="String"
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="Complexity"
+			Name="CurrentClass"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
-			Type="Integer"
+			Type="String"
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="CallDepth"
+			Name="CurrentInterface"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
-			Type="Integer"
+			Type="String"
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="CallChainDepth"
+			Name="InMethodOrFunction"
+			Visible=false
+			Group="Behavior"
+			InitialValue="False"
+			Type="Boolean"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="CurrentMethodFullPath"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
-			Type="Integer"
+			Type="String"
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="MethodName"
+			Name="CurrentMethodCode"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
@@ -119,27 +118,11 @@ Protected Class MethodMetrics
 			EditorType="MultiLineEditor"
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="ParameterCount"
+			Name="FileName"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
-			Type="Integer"
-			EditorType=""
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="OptionalParameterCount"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="Integer"
-			EditorType=""
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="HasTooManyParameters"
-			Visible=false
-			Group="Behavior"
-			InitialValue="False"
-			Type="Boolean"
+			Type="String"
 			EditorType=""
 		#tag EndViewProperty
 	#tag EndViewBehavior

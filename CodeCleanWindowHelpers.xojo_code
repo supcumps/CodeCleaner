@@ -11,7 +11,9 @@ Protected Module CodeCleanWindowHelpers
 		  output = output + "═══════════════════════════════════════" + EndOfLine
 		  output = output + EndOfLine
 		  
-		  Var methods() As CodeElement = analyzer.MethodElements
+		  Var methods() As CodeElement = analyzer.GetMethodElements()  // ✅ Call the method
+		  
+		  
 		  Var stats As Dictionary = CalculateRelationshipStats(methods)
 		  
 		  Var methodsWithCalls As Integer = stats.Value("methodsWithCalls")
@@ -86,14 +88,14 @@ Protected Module CodeCleanWindowHelpers
 
 	#tag Method, Flags = &h21
 		Private Function BuildStatisticsSection(analyzer As ProjectAnalyzer) As String
+		  // Private Function BuildStatisticsSection(analyzer As ProjectAnalyzer) As String
 		  // Generate the statistics summary section
-		  
 		  Var output As String = ""
 		  
-		  Var allElements() As CodeElement = analyzer.AllElements
-		  Var classElements() As CodeElement = analyzer.ClassElements
-		  Var moduleElements() As CodeElement = analyzer.ModuleElements
-		  Var methodElements() As CodeElement = analyzer.MethodElements
+		  Var allElements() As CodeElement = analyzer.GetAllElements()      // ✅ CALL METHOD
+		  Var classElements() As CodeElement = analyzer.GetClassElements()   // ✅ CALL METHOD
+		  Var moduleElements() As CodeElement = analyzer.GetModuleElements() // ✅ CALL METHOD
+		  Var methodElements() As CodeElement = analyzer.GetMethodElements() // ✅ CALL METHOD
 		  
 		  output = output + "Total Elements Found: " + allElements.Count.ToString + EndOfLine
 		  output = output + "  - Classes: " + classElements.Count.ToString + EndOfLine
@@ -102,6 +104,7 @@ Protected Module CodeCleanWindowHelpers
 		  output = output + EndOfLine
 		  
 		  Return output
+		  
 		End Function
 	#tag EndMethod
 
