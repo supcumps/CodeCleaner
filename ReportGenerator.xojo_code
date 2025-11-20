@@ -128,12 +128,26 @@ Protected Class ReportGenerator
 		  Var estimatedLines As Integer = 50  // Header + summary
 		  estimatedLines = estimatedLines + 40  // Quality score section
 		  estimatedLines = estimatedLines + 30  // Code smells section 
+		  
 		  // Calculate code smell lines
 		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
+		  estimatedLines = estimatedLines + 30  // Section header and summary
+		  
 		  Var criticalHigh As Integer = 0
 		  For Each smell As CodeSmell In smells
-		    If smell.Severity = "CRITICAL" Or smell.Severity = "HIGH" Then
-		      criticalHigh = criticalHigh + 1
+		    estimatedLines = estimatedLines + 8  // Each smell takes ~8 lines
+		    
+		    // Add extra for wrapped text
+		    If smell.Description.Length > 80 Then
+		      estimatedLines = estimatedLines + 2
+		    End If
+		    
+		    If smell.Details.Length > 80 Then
+		      estimatedLines = estimatedLines + 2
+		    End If
+		    
+		    If smell.Recommendation.Length > 80 Then
+		      estimatedLines = estimatedLines + 2
 		    End If
 		  Next
 		  If criticalHigh > 10 Then
@@ -527,8 +541,8 @@ Protected Class ReportGenerator
 
 	#tag Method, Flags = &h21
 		Private Function RenderCodeSmells(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Private Function RenderCodeSmells(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  ' Render code smells section in PDF
+		  //Private Function RenderCodeSmells(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  ' Render code smells section in PDF - SHOW ALL DETAILS
 		  
 		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
 		  
@@ -550,7 +564,7 @@ Protected Class ReportGenerator
 		    g.FontSize = 11
 		    g.Bold = False
 		    g.DrawingColor = Color.RGB(0, 150, 0)
-		    g.DrawText("✓ No code smells detected - excellent code quality!", margin + 20, yPos)
+		    g.DrawText(" No code smells detected - excellent code quality!", margin + 20, yPos)
 		    yPos = yPos + lineHeight + 20
 		    Return yPos
 		  End If
@@ -636,42 +650,85 @@ Protected Class ReportGenerator
 		    yPos = yPos + lineHeight + 2
 		  Next
 		  
-		  yPos = yPos + 15
+		  yPos = yPos + 20
 		  
-		  ' Show critical and high priority smells
-		  Var showCount As Integer = 0
-		  Var maxShow As Integer = 10  // Limit to avoid huge PDFs
-		  
-		  If critical > 0 Or high > 0 Then
-		    g.FontSize = 13
+		  ' ========================================
+		  ' CRITICAL PRIORITY - ALL WITH DETAILS
+		  ' ========================================
+		  If critical > 0 Then
+		    g.FontSize = 14
 		    g.Bold = True
 		    g.DrawingColor = Color.RGB(200, 0, 0)
-		    g.DrawText("CRITICAL & HIGH PRIORITY", margin, yPos)
+		    g.DrawText(" CRITICAL PRIORITY (" + critical.ToString + " issues)", margin, yPos)
 		    yPos = yPos + lineHeight + 10
 		    
 		    For Each smell As CodeSmell In smells
-		      If showCount >= maxShow Then Exit For
-		      
-		      If smell.Severity = "CRITICAL" Or smell.Severity = "HIGH" Then
+		      If smell.Severity = "CRITICAL" Then
 		        yPos = RenderSingleCodeSmell(g, smell, pageWidth, margin, lineHeight, yPos)
-		        showCount = showCount + 1
 		      End If
 		    Next
 		    
-		    If showCount >= maxShow And (critical + high) > maxShow Then
-		      g.FontSize = 10
-		      g.Bold = False
-		      g.DrawingColor = Color.RGB(100, 100, 100)
-		      Var remaining As Integer = (critical + high) - maxShow
-		      g.DrawText("... and " + remaining.ToString + " more critical/high priority smells", margin + 20, yPos)yPos = yPos + lineHeight + 10
-		    End If
+		    yPos = yPos + 10
 		  End If
 		  
-		  yPos = yPos + 10
+		  ' ========================================
+		  ' HIGH PRIORITY - ALL WITH DETAILS
+		  ' ========================================
+		  If high > 0 Then
+		    g.FontSize = 14
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(220, 100, 0)
+		    g.DrawText("HIGH PRIORITY (" + high.ToString + " issues)", margin, yPos)
+		    yPos = yPos + lineHeight + 10
+		    
+		    For Each smell As CodeSmell In smells
+		      If smell.Severity = "HIGH" Then
+		        yPos = RenderSingleCodeSmell(g, smell, pageWidth, margin, lineHeight, yPos)
+		      End If
+		    Next
+		    
+		    yPos = yPos + 10
+		  End If
+		  
+		  ' ========================================
+		  ' MEDIUM PRIORITY - ALL WITH DETAILS
+		  ' ========================================
+		  If medium > 0 Then
+		    g.FontSize = 14
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(180, 180, 0)
+		    g.DrawText("MEDIUM PRIORITY (" + medium.ToString + " issues)", margin, yPos)
+		    yPos = yPos + lineHeight + 10
+		    
+		    For Each smell As CodeSmell In smells
+		      If smell.Severity = "MEDIUM" Then
+		        yPos = RenderSingleCodeSmell(g, smell, pageWidth, margin, lineHeight, yPos)
+		      End If
+		    Next
+		    
+		    yPos = yPos + 10
+		  End If
+		  
+		  ' ========================================
+		  ' LOW PRIORITY - ALL WITH DETAILS
+		  ' ========================================
+		  If low > 0 Then
+		    g.FontSize = 14
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(100, 150, 100)
+		    g.DrawText("LOW PRIORITY (" + low.ToString + " issues)", margin, yPos)
+		    yPos = yPos + lineHeight + 10
+		    
+		    For Each smell As CodeSmell In smells
+		      If smell.Severity = "LOW" Then
+		        yPos = RenderSingleCodeSmell(g, smell, pageWidth, margin, lineHeight, yPos)
+		      End If
+		    Next
+		    
+		    yPos = yPos + 10
+		  End If
 		  
 		  Return yPos
-		  
-		  
 		  
 		End Function
 	#tag EndMethod
@@ -754,7 +811,7 @@ Protected Class ReportGenerator
 		  'g.DrawText("⚠ Methods with >5 Parameters: " + methodsWithTooManyParams.ToString, margin, yPos)
 		  'Else
 		  'g.DrawingColor = Color.RGB(0, 150, 0)
-		  'g.DrawText("✓ No methods exceed 5 parameters", margin, yPos)
+		  'g.DrawText("No methods exceed 5 parameters", margin, yPos)
 		  'End If
 		  'yPos = yPos + lineHeight
 		  '
@@ -783,7 +840,7 @@ Protected Class ReportGenerator
 		  g.FontSize = 14
 		  g.Bold = True
 		  g.DrawingColor = Color.RGB(200, 0, 0)
-		  g.DrawText("⚠ ERROR HANDLING ANALYSIS", margin, yPos)
+		  g.DrawText("ERROR HANDLING ANALYSIS", margin, yPos)  
 		  yPos = yPos + 25
 		  
 		  // Statistics
@@ -823,11 +880,11 @@ Protected Class ReportGenerator
 		  yPos = yPos + lineHeight
 		  
 		  g.DrawingColor = Color.RGB(200, 0, 0)
-		  g.DrawText("  • HIGH Risk Issues: " + highRiskCount.ToString, margin + 20, yPos)
+		  g.DrawText("HIGH Risk Issues: " + highRiskCount.ToString, margin + 20, yPos)
 		  yPos = yPos + lineHeight
 		  
 		  g.DrawingColor = Color.RGB(255, 140, 0)
-		  g.DrawText("  • MEDIUM Risk Issues: " + mediumRiskCount.ToString, margin + 20, yPos)
+		  g.DrawText("MEDIUM Risk Issues: " + mediumRiskCount.ToString, margin + 20, yPos)
 		  yPos = yPos + lineHeight + 5
 		  
 		  // High-risk methods list
@@ -836,7 +893,7 @@ Protected Class ReportGenerator
 		    g.FontSize = 13
 		    g.Bold = True
 		    g.DrawingColor = Color.RGB(200, 0, 0)
-		    g.DrawText("🔴 HIGH RISK METHODS (Need Immediate Attention)", margin, yPos)
+		    g.DrawText("HIGH RISK METHODS (Need Immediate Attention)", margin, yPos)
 		    yPos = yPos + 20
 		    
 		    g.FontSize = 10
@@ -888,11 +945,71 @@ Protected Class ReportGenerator
 		    yPos = yPos + 10
 		    g.FontSize = 12
 		    g.DrawingColor = Color.RGB(0, 150, 0)
-		    g.DrawText("✓ All risky operations have error handling!", margin, yPos)
+		    g.DrawText("All risky operations have error handling!", margin, yPos)
 		    yPos = yPos + lineHeight
 		  End If
 		  
 		  yPos = yPos + 20
+		  
+		  
+		  
+		  ' ========================================
+		  ' COMPLETE LIST - ALL METHODS
+		  ' ========================================
+		  g.FontSize = 12
+		  g.Bold = True
+		  g.DrawingColor = Color.RGB(70, 70, 70)
+		  g.DrawText("Complete List - All Methods Needing Error Handling", margin, yPos)
+		  yPos = yPos + lineHeight + 10
+		  
+		  ' Get error handling stats
+		  stats  = analyzer.GetErrorHandlingStats()
+		  Var highRiskMethods() As CodeElement
+		  Var mediumRiskMethods() As CodeElement
+		  
+		  If stats.HasKey("highRisk") Then
+		    highRiskMethods = stats.Value("highRisk")
+		  End If
+		  
+		  If stats.HasKey("mediumRisk") Then
+		    mediumRiskMethods = stats.Value("mediumRisk")
+		  End If
+		  
+		  ' Show all high risk
+		  If highRiskMethods.Count > 0 Then
+		    g.FontSize = 10
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(200, 0, 0)
+		    g.DrawText("HIGH RISK (" + highRiskMethods.Count.ToString + "):", margin + 10, yPos)
+		    yPos = yPos + lineHeight + 5
+		    
+		    g.FontSize = 9
+		    g.Bold = False
+		    
+		    For Each method As CodeElement In highRiskMethods
+		      g.DrawText("method.FullPath, margin + 15, yPos)
+		      yPos = yPos + lineHeight
+		    Next
+		    yPos = yPos + 5
+		  End If
+		  
+		  ' Show all medium risk
+		  If mediumRiskMethods.Count > 0 Then
+		    g.FontSize = 10
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(220, 140, 0)
+		    g.DrawText("MEDIUM RISK (" + mediumRiskMethods.Count.ToString + "):", margin + 10, yPos)
+		    yPos = yPos + lineHeight + 5
+		    
+		    g.FontSize = 9
+		    g.Bold = False
+		    
+		    For Each method As CodeElement In mediumRiskMethods
+		      g.DrawText(" [!) " + method.FullPath, margin + 15, yPos)
+		      yPos = yPos + lineHeight
+		    Next
+		    yPos = yPos + 5
+		  End If
 		  
 		  Return yPos
 		End Function
@@ -1252,7 +1369,7 @@ Protected Class ReportGenerator
 		  
 		  If Not hasRecommendations Then
 		    g.DrawingColor = Color.RGB(0, 150, 0)
-		    g.DrawText("✓ Excellent! No major improvements needed.", margin + 20, yPos)
+		    g.DrawText("Excellent! No major improvements needed.", margin + 20, yPos)
 		    yPos = yPos + lineHeight + 3
 		  End If
 		  
@@ -1317,49 +1434,7 @@ Protected Class ReportGenerator
 
 	#tag Method, Flags = &h21
 		Private Function RenderRefactoringSuggestions(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  '// Private Function RenderRefactoringSuggestions(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  '// Collect all suggestions and group by priority
-		  'Var highPriority() As RefactoringSuggestion
-		  'Var mediumPriority() As RefactoringSuggestion
-		  'Var lowPriority() As RefactoringSuggestion
-		  '
-		  'Var methods() As CodeElement = analyzer.GetMethodElements()
-		  'For Each method As CodeElement In methods
-		  'For Each suggestion As RefactoringSuggestion In method.RefactoringSuggestions
-		  'Select Case suggestion.Priority
-		  'Case "HIGH"
-		  'highPriority.Add(suggestion)
-		  'Case "MEDIUM"
-		  'mediumPriority.Add(suggestion)
-		  'Case "LOW"
-		  'lowPriority.Add(suggestion)
-		  'End Select
-		  'Next
-		  'Next
-		  '
-		  '// DEDUPLICATE using ByRef method (modifies arrays in place)
-		  'DeduplicateSuggestionsInPlace(highPriority)
-		  'DeduplicateSuggestionsInPlace(mediumPriority)
-		  'DeduplicateSuggestionsInPlace(lowPriority)
-		  '
-		  '// Render high priority first
-		  'If highPriority.Count > 0 Then
-		  'yPos = RenderPrioritySection(g, "HIGH PRIORITY - Fix These First!", highPriority, pageWidth, margin, lineHeight, yPos, &cDC143C)
-		  'End If
-		  '
-		  '// Then medium
-		  'If mediumPriority.Count > 0 Then
-		  'yPos = RenderPrioritySection(g, "MEDIUM PRIORITY", mediumPriority, pageWidth, margin, lineHeight, yPos, &cFF8C00)
-		  'End If
-		  '
-		  '// Then low (if any)
-		  'If lowPriority.Count > 0 Then
-		  'yPos = RenderPrioritySection(g, "LOW PRIORITY", lowPriority, pageWidth, margin, lineHeight, yPos, &c4169E1)
-		  'End If
-		  '
-		  'Return yPos
-		  '
-		  '
+		  
 		  
 		  // Private Function RenderRefactoringSuggestions(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
 		  // Collect all suggestions and group by priority
@@ -1659,7 +1734,7 @@ Protected Class ReportGenerator
 		  
 		  ' Recommendation
 		  g.DrawingColor = Color.RGB(0, 100, 150)
-		  g.DrawText("  → " + smell.Recommendation, margin + 25, yPos)
+		  g.DrawText("  --> " + smell.Recommendation, margin + 25, yPos)
 		  yPos = yPos + lineHeight + 10
 		  
 		  Return yPos
@@ -1781,7 +1856,7 @@ Protected Class ReportGenerator
 		  g.FontSize = 13
 		  g.Bold = True
 		  g.DrawingColor = Color.RGB(200, 0, 0)
-		  g.DrawText("⚠ MOST COMPLEX METHODS (Top 10)", margin, yPos)
+		  g.DrawText("MOST COMPLEX METHODS (Top 10)", margin, yPos)
 		  yPos = yPos + 20
 		  
 		  g.FontSize = 10
@@ -1886,10 +1961,10 @@ Protected Class ReportGenerator
 		  If unusedElements.Count > 0 Then
 		    g.DrawingColor = Color.RGB(200, 0, 0)
 		    Var unusedCount As String = unusedElements.Count.ToString
-		    g.DrawText("⚠ Found " + unusedCount + " UNUSED elements:", margin, yPos)
+		    g.DrawText("Found " + unusedCount + " UNUSED elements:", margin, yPos)
 		  Else
 		    g.DrawingColor = Color.RGB(0, 150, 0)
-		    g.DrawText("✓ No unused elements found", margin, yPos)
+		    g.DrawText("No unused elements found", margin, yPos)
 		  End If
 		  yPos = yPos + 25
 		  
@@ -1908,7 +1983,7 @@ Protected Class ReportGenerator
 		  g.FontSize = 12
 		  g.Bold = True
 		  Var count As String = elements.Count.ToString
-		  g.DrawText("▼ " + typeName + " (" + count + "):", margin, yPos)
+		  g.DrawText(typeName + " (" + count + "):", margin, yPos)
 		  yPos = yPos + lineHeight + 3
 		  
 		  g.FontSize = 10
