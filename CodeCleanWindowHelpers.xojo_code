@@ -1,6 +1,150 @@
 #tag Module
 Protected Module CodeCleanWindowHelpers
 	#tag Method, Flags = &h21
+		Private Function BuildCodeSmellsSection(analyzer As ProjectAnalyzer) As String
+		  // Function BuildCodeSmellsSection(analyzer As ProjectAnalyzer) As String
+		  ' Build code smells section for text reports
+		  
+		  Var report As String = ""
+		  
+		  report = report + EndOfLine + "CODE SMELL DETECTION" + EndOfLine
+		  report = report + "====================" + EndOfLine + EndOfLine
+		  
+		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
+		  
+		  If smells.Count = 0 Then
+		    report = report + "✓ No code smells detected - excellent code quality!" + EndOfLine
+		    Return report
+		  End If
+		  
+		  ' Group by type
+		  Var godClass() As CodeSmell
+		  Var featureEnvy() As CodeSmell
+		  Var magicNumbers() As CodeSmell
+		  Var longParams() As CodeSmell
+		  Var deepNesting() As CodeSmell
+		  Var deadCode() As CodeSmell
+		  Var shotgunSurgery() As CodeSmell
+		  
+		  For Each smell As CodeSmell In smells
+		    Select Case smell.SmellType
+		    Case "God Class"
+		      godClass.Add(smell)
+		    Case "Feature Envy"
+		      featureEnvy.Add(smell)
+		    Case "Magic Numbers"
+		      magicNumbers.Add(smell)
+		    Case "Long Parameter List"
+		      longParams.Add(smell)
+		    Case "Deep Nesting"
+		      deepNesting.Add(smell)
+		    Case "Dead Code"
+		      deadCode.Add(smell)
+		    Case "Shotgun Surgery Risk"
+		      shotgunSurgery.Add(smell)
+		    End Select
+		  Next
+		  
+		  ' Summary
+		  report = report + "Total Code Smells Found: " + smells.Count.ToString + EndOfLine + EndOfLine
+		  
+		  report = report + "Breakdown by Type:" + EndOfLine
+		  If godClass.Count > 0 Then
+		    report = report + "  🔴 God Classes: " + godClass.Count.ToString + EndOfLine
+		  End If
+		  If featureEnvy.Count > 0 Then
+		    report = report + "  🟠 Feature Envy: " + featureEnvy.Count.ToString + EndOfLine
+		  End If
+		  If magicNumbers.Count > 0 Then
+		    report = report + "  🟡 Magic Numbers: " + magicNumbers.Count.ToString + EndOfLine
+		  End If
+		  If longParams.Count > 0 Then
+		    report = report + "  🟠 Long Parameter Lists: " + longParams.Count.ToString + EndOfLine
+		  End If
+		  If deepNesting.Count > 0 Then
+		    report = report + "  🔴 Deep Nesting: " + deepNesting.Count.ToString + EndOfLine
+		  End If
+		  If deadCode.Count > 0 Then
+		    report = report + "  🟡 Dead Code: " + deadCode.Count.ToString + EndOfLine
+		  End If
+		  If shotgunSurgery.Count > 0 Then
+		    report = report + "  🟠 Shotgun Surgery Risks: " + shotgunSurgery.Count.ToString + EndOfLine
+		  End If
+		  report = report + EndOfLine
+		  
+		  ' Severity breakdown
+		  Var critical As Integer = 0
+		  Var high As Integer = 0
+		  Var medium As Integer = 0
+		  Var low As Integer = 0
+		  
+		  For Each smell As CodeSmell In smells
+		    Select Case smell.Severity
+		    Case "CRITICAL"
+		      critical = critical + 1
+		    Case "HIGH"
+		      high = high + 1
+		    Case "MEDIUM"
+		      medium = medium + 1
+		    Case "LOW"
+		      low = low + 1
+		    End Select
+		  Next
+		  
+		  report = report + "By Severity:" + EndOfLine
+		  If critical > 0 Then
+		    report = report + "  🔴 CRITICAL: " + critical.ToString + " (fix immediately)" + EndOfLine
+		  End If
+		  If high > 0 Then
+		    report = report + "  🟠 HIGH: " + high.ToString + " (fix soon)" + EndOfLine
+		  End If
+		  If medium > 0 Then
+		    report = report + "  🟡 MEDIUM: " + medium.ToString + " (address when possible)" + EndOfLine
+		  End If
+		  If low > 0 Then
+		    report = report + "  🔵 LOW: " + low.ToString + " (nice to fix)" + EndOfLine
+		  End If
+		  report = report + EndOfLine
+		  
+		  ' Detailed listings by severity
+		  If critical > 0 Or high > 0 Then
+		    report = report + "🔴 CRITICAL & HIGH PRIORITY SMELLS" + EndOfLine
+		    report = report + "===================================" + EndOfLine
+		    
+		    For Each smell As CodeSmell In smells
+		      If smell.Severity = "CRITICAL" Or smell.Severity = "HIGH" Then
+		        report = report + FormatCodeSmell(smell) + EndOfLine
+		      End If
+		    Next
+		  End If
+		  
+		  If medium > 0 Then
+		    report = report + EndOfLine + "🟡 MEDIUM PRIORITY SMELLS" + EndOfLine
+		    report = report + "=========================" + EndOfLine
+		    
+		    For Each smell As CodeSmell In smells
+		      If smell.Severity = "MEDIUM" Then
+		        report = report + FormatCodeSmell(smell) + EndOfLine
+		      End If
+		    Next
+		  End If
+		  
+		  If low > 0 Then
+		    report = report + EndOfLine + "🔵 LOW PRIORITY SMELLS" + EndOfLine
+		    report = report + "======================" + EndOfLine
+		    
+		    For Each smell As CodeSmell In smells
+		      If smell.Severity = "LOW" Then
+		        report = report + FormatCodeSmell(smell) + EndOfLine
+		      End If
+		    Next
+		  End If
+		  
+		  Return report
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function BuildQualityScoreSection(analyzer As ProjectAnalyzer) As String
 		  //Function BuildQualityScoreSection(analyzer As ProjectAnalyzer) As String
 		  ' Build the quality score section for text reports
@@ -337,6 +481,22 @@ Protected Module CodeCleanWindowHelpers
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function FormatCodeSmell(smell As CodeSmell) As String
+		  // Private Function FormatCodeSmell(smell As CodeSmell) As String
+		  ' Format a single code smell for text display
+		  
+		  Var output As String = ""
+		  
+		  output = output + smell.GetSeverityEmoji() + " " + smell.SmellType + ": " + smell.Element.FullPath + EndOfLine
+		  output = output + "   " + smell.Description + EndOfLine
+		  output = output + "   " + smell.Details + EndOfLine
+		  output = output + "   → " + smell.Recommendation + EndOfLine
+		  
+		  Return output
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function FormatElementList(elements() As CodeElement) As String
 		  // Format a list of elements for display
 		  
@@ -382,13 +542,15 @@ Protected Module CodeCleanWindowHelpers
 	#tag Method, Flags = &h0
 		Sub GenerateTextReport(Extends win As CodeCleanWindow)
 		  //Function GenerateTextReport(Extends win As CodeCleanWindow)
+		  
+		  // Function GenerateTextReport(Extends win As CodeCleanWindow)
 		  If win.mAnalyzer = Nil Then Return
 		  
 		  Var output As String = ""
 		  
-		  // Build each section
 		  output = output + BuildReportHeader()
-		  output = output + BuildQualityScoreSection(win.mAnalyzer)  // ← ADD THIS LINE
+		  output = output + BuildQualityScoreSection(win.mAnalyzer)
+		  output = output + BuildCodeSmellsSection(win.mAnalyzer)  // ← ADD THIS
 		  output = output + BuildStatisticsSection(win.mAnalyzer)
 		  output = output + BuildUnusedElementsSection(win.mAnalyzer)
 		  output = output + BuildRelationshipSection(win.mAnalyzer)

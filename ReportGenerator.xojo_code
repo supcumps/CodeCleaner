@@ -126,7 +126,21 @@ Protected Class ReportGenerator
 		  Var allMethods() As CodeElement = analyzer.GetMethodElements
 		  
 		  Var estimatedLines As Integer = 50  // Header + summary
-		  estimatedLines = estimatedLines + 40  // Quality score section ← ADD THIS
+		  estimatedLines = estimatedLines + 40  // Quality score section
+		  estimatedLines = estimatedLines + 30  // Code smells section 
+		  // Calculate code smell lines
+		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
+		  Var criticalHigh As Integer = 0
+		  For Each smell As CodeSmell In smells
+		    If smell.Severity = "CRITICAL" Or smell.Severity = "HIGH" Then
+		      criticalHigh = criticalHigh + 1
+		    End If
+		  Next
+		  If criticalHigh > 10 Then
+		    criticalHigh = 10  // Limit display
+		  End If
+		  estimatedLines = estimatedLines + (criticalHigh * 6)  // 6 lines per smell
+		  
 		  estimatedLines = estimatedLines + (unusedElements.Count * 2)
 		  estimatedLines = estimatedLines + 40  // Error handling section
 		  estimatedLines = estimatedLines + 20  // Relationship section
@@ -359,7 +373,8 @@ Protected Class ReportGenerator
 		    
 		    // Render each section
 		    yPos = RenderHeader(g, pageWidth, margin, yPos)
-		    yPos = RenderQualityScore(g, analyzer, pageWidth, margin, lineHeight, yPos)  // ← ADD THIS
+		    yPos = RenderQualityScore(g, analyzer, pageWidth, margin, lineHeight, yPos)  
+		    yPos = RenderCodeSmells(g, analyzer, pageWidth, margin, lineHeight, yPos)  // ← ADD THIS
 		    yPos = RenderSummary(g, analyzer, margin, lineHeight, yPos)
 		    yPos = RenderUnusedElements(g, analyzer, margin, lineHeight, yPos)
 		    yPos = RenderErrorHandlingAnalysis(g, analyzer, margin, lineHeight, yPos)
@@ -507,6 +522,157 @@ Protected Class ReportGenerator
 		  Next
 		  
 		  Return metrics
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderCodeSmells(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Private Function RenderCodeSmells(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  ' Render code smells section in PDF
+		  
+		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
+		  
+		  yPos = yPos + 20
+		  
+		  ' Section header line
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawLine(margin, yPos, pageWidth - margin, yPos)
+		  yPos = yPos + 20
+		  
+		  ' Title
+		  g.FontSize = 16
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("CODE SMELL DETECTION", margin, yPos)
+		  yPos = yPos + 25
+		  
+		  If smells.Count = 0 Then
+		    g.FontSize = 11
+		    g.Bold = False
+		    g.DrawingColor = Color.RGB(0, 150, 0)
+		    g.DrawText("✓ No code smells detected - excellent code quality!", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 20
+		    Return yPos
+		  End If
+		  
+		  ' Summary stats
+		  g.FontSize = 12
+		  g.Bold = False
+		  g.DrawingColor = Color.Black
+		  g.DrawText("Total Code Smells: " + smells.Count.ToString, margin, yPos)
+		  yPos = yPos + lineHeight + 10
+		  
+		  ' Count by severity
+		  Var critical As Integer = 0
+		  Var high As Integer = 0
+		  Var medium As Integer = 0
+		  Var low As Integer = 0
+		  
+		  For Each smell As CodeSmell In smells
+		    Select Case smell.Severity
+		    Case "CRITICAL"
+		      critical = critical + 1
+		    Case "HIGH"
+		      high = high + 1
+		    Case "MEDIUM"
+		      medium = medium + 1
+		    Case "LOW"
+		      low = low + 1
+		    End Select
+		  Next
+		  
+		  ' Severity breakdown
+		  g.FontSize = 11
+		  
+		  If critical > 0 Then
+		    g.DrawingColor = Color.RGB(200, 0, 0)
+		    g.DrawText("  CRITICAL: " + critical.ToString + " (fix immediately)", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		  End If
+		  
+		  If high > 0 Then
+		    g.DrawingColor = Color.RGB(220, 100, 0)
+		    g.DrawText("  HIGH: " + high.ToString + " (fix soon)", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		  End If
+		  
+		  If medium > 0 Then
+		    g.DrawingColor = Color.RGB(180, 180, 0)
+		    g.DrawText("  MEDIUM: " + medium.ToString + " (address when possible)", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		  End If
+		  
+		  If low > 0 Then
+		    g.DrawingColor = Color.RGB(100, 150, 100)
+		    g.DrawText("  LOW: " + low.ToString + " (nice to fix)", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		  End If
+		  
+		  yPos = yPos + 15
+		  
+		  ' Count by type
+		  Var typeCount As New Dictionary
+		  For Each smell As CodeSmell In smells
+		    If typeCount.HasKey(smell.SmellType) Then
+		      typeCount.Value(smell.SmellType) = CType(typeCount.Value(smell.SmellType), Integer) + 1
+		    Else
+		      typeCount.Value(smell.SmellType) = 1
+		    End If
+		  Next
+		  
+		  g.FontSize = 11
+		  g.DrawingColor = Color.RGB(70, 70, 70)
+		  g.Bold = True
+		  g.DrawText("By Type:", margin, yPos)
+		  yPos = yPos + lineHeight + 5
+		  
+		  g.Bold = False
+		  g.DrawingColor = Color.Black
+		  
+		  For Each key As Variant In typeCount.Keys
+		    Var typeName As String = key.StringValue
+		    Var count As Integer = CType(typeCount.Value(key), Integer)
+		    g.DrawText("  • " + typeName + ": " + count.ToString, margin + 20, yPos)
+		    yPos = yPos + lineHeight + 2
+		  Next
+		  
+		  yPos = yPos + 15
+		  
+		  ' Show critical and high priority smells
+		  Var showCount As Integer = 0
+		  Var maxShow As Integer = 10  // Limit to avoid huge PDFs
+		  
+		  If critical > 0 Or high > 0 Then
+		    g.FontSize = 13
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(200, 0, 0)
+		    g.DrawText("CRITICAL & HIGH PRIORITY", margin, yPos)
+		    yPos = yPos + lineHeight + 10
+		    
+		    For Each smell As CodeSmell In smells
+		      If showCount >= maxShow Then Exit For
+		      
+		      If smell.Severity = "CRITICAL" Or smell.Severity = "HIGH" Then
+		        yPos = RenderSingleCodeSmell(g, smell, pageWidth, margin, lineHeight, yPos)
+		        showCount = showCount + 1
+		      End If
+		    Next
+		    
+		    If showCount >= maxShow And (critical + high) > maxShow Then
+		      g.FontSize = 10
+		      g.Bold = False
+		      g.DrawingColor = Color.RGB(100, 100, 100)
+		      Var remaining As Integer = (critical + high) - maxShow
+		      g.DrawText("... and " + remaining.ToString + " more critical/high priority smells", margin + 20, yPos)yPos = yPos + lineHeight + 10
+		    End If
+		  End If
+		  
+		  yPos = yPos + 10
+		  
+		  Return yPos
+		  
+		  
+		  
 		End Function
 	#tag EndMethod
 
@@ -1451,6 +1617,52 @@ Protected Class ReportGenerator
 		  
 		  Return yPos + barHeight + 18  // ← Adjusted spacing to account for detail line
 		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderSingleCodeSmell(g As Graphics, smell As CodeSmell, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Private Function RenderSingleCodeSmell(g As Graphics, smell As CodeSmell, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  
+		  ' Render a single code smell with formatting
+		  
+		  ' Element path with severity indicator
+		  g.FontSize = 11
+		  g.Bold = True
+		  g.DrawingColor = smell.GetSeverityColor()
+		  g.DrawText("• " + smell.SmellType, margin + 20, yPos)
+		  yPos = yPos + lineHeight + 2
+		  
+		  ' Location
+		  g.FontSize = 10
+		  g.Bold = False
+		  g.DrawingColor = Color.Black
+		  g.DrawText("  " + smell.Element.FullPath, margin + 25, yPos)
+		  yPos = yPos + lineHeight + 2
+		  
+		  ' Description
+		  g.FontSize = 9
+		  g.DrawingColor = Color.RGB(80, 80, 80)
+		  Var wrappedDesc() As String = WrapText(g, smell.Description, pageWidth - margin - 60)
+		  For Each line As String In wrappedDesc
+		    g.DrawText("  " + line, margin + 25, yPos)
+		    yPos = yPos + lineHeight
+		  Next
+		  
+		  ' Details
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  Var wrappedDetails() As String = WrapText(g, smell.Details, pageWidth - margin - 60)
+		  For Each line As String In wrappedDetails
+		    g.DrawText("  " + line, margin + 25, yPos)
+		    yPos = yPos + lineHeight
+		  Next
+		  
+		  ' Recommendation
+		  g.DrawingColor = Color.RGB(0, 100, 150)
+		  g.DrawText("  → " + smell.Recommendation, margin + 25, yPos)
+		  yPos = yPos + lineHeight + 10
+		  
+		  Return yPos
 		End Function
 	#tag EndMethod
 

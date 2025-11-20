@@ -813,6 +813,64 @@ Protected Class ProjectAnalyzer
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h0
+		Function DetectCodeSmells() As CodeSmell()
+		  
+		  // Function DetectCodeSmells() As CodeSmell()
+		  ' Main method to detect all code smells
+		  
+		  Var smells() As CodeSmell
+		  
+		  System.DebugLog("=== Starting Code Smell Detection ===")
+		  
+		  ' Detect each type of smell and add to array
+		  Var temp() As CodeSmell
+		  
+		  temp = DetectGodClasses()
+		  For Each smell As CodeSmell In temp
+		    smells.Add(smell)
+		  Next
+		  
+		  temp = DetectFeatureEnvy()
+		  For Each smell As CodeSmell In temp
+		    smells.Add(smell)
+		  Next
+		  
+		  temp = DetectMagicNumbers()
+		  For Each smell As CodeSmell In temp
+		    smells.Add(smell)
+		  Next
+		  
+		  temp = DetectLongParameterLists()
+		  For Each smell As CodeSmell In temp
+		    smells.Add(smell)
+		  Next
+		  
+		  temp = DetectDeepNesting()
+		  For Each smell As CodeSmell In temp
+		    smells.Add(smell)
+		  Next
+		  
+		  temp = DetectDeadCode()
+		  For Each smell As CodeSmell In temp
+		    smells.Add(smell)
+		  Next
+		  
+		  temp = DetectShotgunSurgery()
+		  For Each smell As CodeSmell In temp
+		    smells.Add(smell)
+		  Next
+		  
+		  System.DebugLog("Total code smells detected: " + smells.Count.ToString)
+		  
+		  DetectedSmells = smells
+		  Return smells
+		  
+		  
+		  
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Function DetectDatabaseOperations(code As String) As Boolean
 		  // Detect database-related operations
@@ -836,6 +894,153 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function DetectDeadCode() As CodeSmell()
+		  // Private Function DetectDeadCode() As CodeSmell()
+		  ' Detect unused/dead code elements
+		  
+		  Var smells() As CodeSmell
+		  Var unused() As CodeElement = GetUnusedElements()
+		  
+		  For Each element As CodeElement In unused
+		    ' Skip constructors and some event handlers
+		    If element.Name.Lowercase = "constructor" Then Continue
+		    If element.Name = "METHOD" And element.Name.Lowercase.Contains("action") Then
+		      Continue  // Might be event handler
+		    End If
+		    
+		    Var smell As New CodeSmell
+		    smell.SmellType = "Dead Code"
+		    smell.Severity = "MEDIUM"
+		    smell.Element = element
+		    smell.Description = "Unused " + element.Name.Lowercase
+		    smell.Details = "Never referenced in codebase"
+		    smell.Recommendation = "Remove to reduce maintenance burden"
+		    smell.MetricValue = 1
+		    smells.Add(smell)
+		  Next
+		  
+		  Return smells
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectDeepNesting() As CodeSmell()
+		  // Private Function DetectDeepNesting() As CodeSmell()
+		  ' Detect deeply nested code
+		  
+		  Var smells() As CodeSmell
+		  Var methods() As CodeElement = GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    If method.Code.Trim = "" Then Continue
+		    
+		    Var maxDepth As Integer = CalculateNestingDepth(method.Code)
+		    
+		    If maxDepth >= 4 Then
+		      Var smell As New CodeSmell
+		      smell.SmellType = "Deep Nesting"
+		      
+		      If maxDepth >= 6 Then
+		        smell.Severity = "CRITICAL"
+		      ElseIf maxDepth >= 5 Then
+		        smell.Severity = "HIGH"
+		      Else
+		        smell.Severity = "MEDIUM"
+		      End If
+		      
+		      smell.Element = method
+		      smell.Description = "Method has " + maxDepth.ToString + " levels of nesting"
+		      smell.Details = "Deep nesting makes code hard to understand"
+		      smell.Recommendation = "Use guard clauses and extract nested logic into methods"
+		      smell.MetricValue = maxDepth
+		      smells.Add(smell)
+		    End If
+		  Next
+		  
+		  Return smells
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectFeatureEnvy() As CodeSmell()
+		  
+		  // Private Function DetectFeatureEnvy() As CodeSmell()
+		  ' Detect Feature Envy (methods that use other classes more than their own)
+		  
+		  Var smells() As CodeSmell
+		  Var methods() As CodeElement = GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    If method.Code.Trim = "" Then Continue
+		    
+		    ' Determine the method's class
+		    Var methodClass As String = ""
+		    Var parts() As String = method.FullPath.Split(".")
+		    If parts.Count >= 2 Then
+		      methodClass = parts(parts.Count - 2)
+		    End If
+		    
+		    If methodClass = "" Then Continue
+		    
+		    Var code As String = method.Code
+		    Var ownClassReferences As Integer = 0
+		    Var otherClassReferences As Integer = 0
+		    
+		    ' Count "Self." references (own class)
+		    ownClassReferences = CountOccurrencesInString(code.Uppercase, "SELF.")
+		    ownClassReferences = ownClassReferences + CountOccurrencesInString(code.Uppercase, "ME.")
+		    
+		    ' Count references to other class properties
+		    Var lines() As String = code.Split(EndOfLine)
+		    For Each line As String In lines
+		      Var trimmed As String = line.Trim.Uppercase
+		      
+		      ' Skip comments
+		      If trimmed.BeginsWith("'") Or trimmed.BeginsWith("//") Then Continue
+		      
+		      ' Look for dot notation (excluding Self/Me)
+		      If trimmed.IndexOf(".") > 0 Then
+		        If Not trimmed.Contains("SELF.") And Not trimmed.Contains("ME.") Then
+		          ' Count occurrences of dot notation
+		          Var dotCount As Integer = 0
+		          For i As Integer = 0 To trimmed.Length - 1
+		            If trimmed.Mid(i, 1) = "." Then
+		              ' Check it's not a numeric decimal
+		              If i > 0 And i < trimmed.Length - 1 Then
+		                Var before As String = trimmed.Mid(i - 1, 1)
+		                Var after As String = trimmed.Mid(i + 1, 1)
+		                If Not (before >= "0" And before <= "9" And after >= "0" And after <= "9") Then
+		                  dotCount = dotCount + 1
+		                End If
+		              End If
+		            End If
+		          Next
+		          otherClassReferences = otherClassReferences + dotCount
+		        End If
+		      End If
+		    Next
+		    
+		    ' Feature envy if uses other classes significantly more than own
+		    If otherClassReferences > 10 And otherClassReferences > (ownClassReferences * 3) Then
+		      Var smell As New CodeSmell
+		      smell.SmellType = "Feature Envy"
+		      smell.Severity = If(otherClassReferences > 20, "HIGH", "MEDIUM")
+		      smell.Element = method
+		      smell.Description = "Method uses other classes' data more than its own"
+		      smell.Details = "Own class refs: " + ownClassReferences.ToString + ", Other class refs: " + otherClassReferences.ToString
+		      smell.Recommendation = "Move this method to the class it interacts with most, or extract a new class"
+		      smell.MetricValue = otherClassReferences
+		      smells.Add(smell)
+		      
+		      System.DebugLog("Feature Envy detected: " + method.FullPath)
+		    End If
+		  Next
+		  
+		  Return smells
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function DetectFileOperations(code As String) As Boolean
 		  // Detect file I/O operations
 		  
@@ -855,6 +1060,187 @@ Protected Class ProjectAnalyzer
 		  If upperCode.Contains(".MOVE") And upperCode.Contains("FILE") Then Return True
 		  
 		  Return False
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectGodClasses() As CodeSmell()
+		  //Private Function DetectGodClasses() As CodeSmell()
+		  ' Detect God Classes (classes with too many responsibilities)
+		  
+		  Var smells() As CodeSmell
+		  Var classes() As CodeElement = GetClassElements()
+		  
+		  For Each classElement As CodeElement In classes
+		    Var methodCount As Integer = 0
+		    Var totalLOC As Integer = 0
+		    
+		    ' Count methods in this class
+		    Var allMethods() As CodeElement = GetMethodElements()
+		    For Each method As CodeElement In allMethods
+		      If method.FullPath.BeginsWith(classElement.FullPath + ".") Then
+		        methodCount = methodCount + 1
+		        totalLOC = totalLOC + method.LinesOfCode
+		      End If
+		    Next
+		    
+		    ' Check thresholds
+		    Var isGodClass As Boolean = False
+		    Var reason As String = ""
+		    Var severity As String = ""
+		    
+		    If methodCount > 25 Then
+		      isGodClass = True
+		      reason = methodCount.ToString + " methods"
+		      severity = "CRITICAL"
+		    ElseIf methodCount > 15 Then
+		      isGodClass = True
+		      reason = methodCount.ToString + " methods"
+		      severity = "HIGH"
+		    ElseIf totalLOC > 1000 Then
+		      isGodClass = True
+		      reason = totalLOC.ToString + " lines of code"
+		      severity = "CRITICAL"
+		    ElseIf totalLOC > 500 Then
+		      isGodClass = True
+		      reason = totalLOC.ToString + " lines of code"
+		      severity = "HIGH"
+		    End If
+		    
+		    If isGodClass Then
+		      Var smell As New CodeSmell
+		      smell.SmellType = "God Class"
+		      smell.Severity = severity
+		      smell.Element = classElement
+		      smell.Description = "Class has too many responsibilities (" + reason + ")"
+		      smell.Details = "Methods: " + methodCount.ToString + ", LOC: " + totalLOC.ToString
+		      smell.Recommendation = "Split into smaller, focused classes using Single Responsibility Principle"
+		      smell.MetricValue = methodCount
+		      smells.Add(smell)
+		      
+		      System.DebugLog("God Class detected: " + classElement.FullPath + " (" + reason + ")")
+		    End If
+		  Next
+		  
+		  Return smells
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectLongParameterLists() As CodeSmell()
+		  
+		  // Private Function DetectLongParameterLists() As CodeSmell()
+		  ' Detect methods with too many parameters
+		  
+		  Var smells() As CodeSmell
+		  Var methods() As CodeElement = GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    If method.ParameterCount > 5 Then
+		      Var smell As New CodeSmell
+		      smell.SmellType = "Long Parameter List"
+		      
+		      If method.ParameterCount >= 7 Then
+		        smell.Severity = "HIGH"
+		      Else
+		        smell.Severity = "MEDIUM"
+		      End If
+		      
+		      smell.Element = method
+		      smell.Description = "Method has " + method.ParameterCount.ToString + " parameters"
+		      smell.Details = "Parameters make methods hard to call and maintain"
+		      smell.Recommendation = "Use parameter objects or builder pattern"
+		      smell.MetricValue = method.ParameterCount
+		      smells.Add(smell)
+		    End If
+		  Next
+		  
+		  Return smells
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectMagicNumbers() As CodeSmell()
+		  
+		  // Private Function DetectMagicNumbers() As CodeSmell()
+		  ' Detect Magic Numbers (hardcoded numeric constants)
+		  
+		  Var smells() As CodeSmell
+		  Var methods() As CodeElement = GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    If method.Code.Trim = "" Then Continue
+		    
+		    Var code As String = method.Code
+		    Var magicNumbers() As String
+		    
+		    ' Look for numeric literals in code
+		    Var lines() As String = code.Split(EndOfLine)
+		    For Each line As String In lines
+		      Var trimmed As String = line.Trim
+		      
+		      ' Skip comments
+		      If trimmed.BeginsWith("'") Or trimmed.BeginsWith("//") Then Continue
+		      
+		      ' Look for numbers in common patterns
+		      If trimmed.Contains(" = ") Or trimmed.Contains(" < ") Or trimmed.Contains(" > ") Or _
+		        trimmed.Contains(" + ") Or trimmed.Contains(" - ") Or trimmed.Contains(" * ") Or _
+		        trimmed.Contains(" / ") Or trimmed.Contains("(") Or trimmed.Contains(",") Then
+		        
+		        ' Extract potential numbers
+		        Var words() As String = trimmed.ReplaceAll(",", " ").ReplaceAll("(", " ").ReplaceAll(")", " ").Split(" ")
+		        For Each word As String In words
+		          word = word.Trim
+		          
+		          ' Check if it's a number
+		          If word <> "" And IsNumeric(word) Then
+		            Var num As Double
+		            Try
+		              num = Val(word)
+		              
+		              ' Skip common values
+		              If num <> 0 And num <> 1 And num <> -1 And num <> 100 And _
+		                num <> 2 And num <> 10 Then
+		                ' Check if already in list
+		                Var alreadyHave As Boolean = False
+		                For Each existing As String In magicNumbers
+		                  If existing = word Then
+		                    alreadyHave = True
+		                    Exit For
+		                  End If
+		                Next
+		                
+		                If Not alreadyHave Then
+		                  magicNumbers.Add(word)
+		                End If
+		              End If
+		            Catch
+		              ' Not a valid number
+		            End Try
+		          End If
+		        Next
+		      End If
+		    Next
+		    
+		    ' If significant magic numbers found, report it
+		    If magicNumbers.Count >= 3 Then
+		      Var smell As New CodeSmell
+		      smell.SmellType = "Magic Numbers"
+		      smell.Severity = If(magicNumbers.Count >= 5, "MEDIUM", "LOW")
+		      smell.Element = method
+		      smell.Description = "Method contains " + magicNumbers.Count.ToString + " magic numbers"
+		      smell.Details = "Numbers: " + String.FromArray(magicNumbers, ", ")
+		      smell.Recommendation = "Replace magic numbers with named constants"
+		      smell.MetricValue = magicNumbers.Count
+		      smells.Add(smell)
+		      
+		      System.DebugLog("Magic Numbers detected in: " + method.FullPath)
+		    End If
+		  Next
+		  
+		  Return smells
+		  
 		End Function
 	#tag EndMethod
 
@@ -928,6 +1314,62 @@ Protected Class ProjectAnalyzer
 		  If upperCode.Contains("XMLHTTPREQUEST") Then Return True
 		  
 		  Return False
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DetectShotgunSurgery() As CodeSmell()
+		  // Private Function DetectShotgunSurgery() As CodeSmell()
+		  ' Detect Shotgun Surgery (change in one method requires changes in many others)
+		  
+		  Var smells() As CodeSmell
+		  Var methods() As CodeElement = GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    ' Count how many different classes call this method
+		    Var callingClasses() As String
+		    
+		    If method.CalledBy.Count > 10 Then
+		      For Each caller As CodeElement In method.CalledBy
+		        ' Extract class name from caller path
+		        Var parts() As String = caller.FullPath.Split(".")
+		        If parts.Count >= 2 Then
+		          Var className As String = parts(parts.Count - 2)
+		          
+		          ' Check if already in list
+		          Var alreadyHave As Boolean = False
+		          For Each existing As String In callingClasses
+		            If existing = className Then
+		              alreadyHave = True
+		              Exit For
+		            End If
+		          Next
+		          
+		          If Not alreadyHave Then
+		            callingClasses.Add(className)
+		          End If
+		        End If
+		      Next
+		      
+		      ' If called by many different classes, it's a shotgun surgery risk
+		      If callingClasses.Count >= 5 Then
+		        Var smell As New CodeSmell
+		        smell.SmellType = "Shotgun Surgery Risk"
+		        smell.Severity = If(callingClasses.Count >= 8, "HIGH", "MEDIUM")
+		        smell.Element = method
+		        smell.Description = "Called by " + method.CalledBy.Count.ToString + " methods across " + callingClasses.Count.ToString + " classes"
+		        smell.Details = "Changes here require checking " + callingClasses.Count.ToString + " different classes"
+		        smell.Recommendation = "Consider creating a facade or service class to centralize these calls"
+		        smell.MetricValue = callingClasses.Count
+		        smells.Add(smell)
+		        
+		        System.DebugLog("Shotgun Surgery risk: " + method.FullPath)
+		      End If
+		    End If
+		  Next
+		  
+		  Return smells
+		  
 		End Function
 	#tag EndMethod
 
@@ -1412,6 +1854,22 @@ Protected Class ProjectAnalyzer
 		  line.BeginsWith("Private Module ") Or _
 		  line.BeginsWith("Global Module ") Or _
 		  line.BeginsWith("Module ")
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function IsNumeric(value As String) As Boolean
+		  // Private Function IsNumeric(value As String) As Boolean
+		  ' Helper to check if a string is numeric
+		  
+		  If value.Trim = "" Then Return False
+		  
+		  Try
+		    Var test As Double = Val(value)
+		    Return True
+		  Catch
+		    Return False
+		  End Try
 		End Function
 	#tag EndMethod
 
@@ -1942,6 +2400,10 @@ Protected Class ProjectAnalyzer
 
 	#tag Property, Flags = &h0
 		ClassElements() As CodeElement
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private DetectedSmells() As CodeSmell
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
