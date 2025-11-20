@@ -1,6 +1,31 @@
 #tag Class
 Protected Class CodeElement
 	#tag Method, Flags = &h0
+		Function CalculateLinesOfCode() As Integer
+		  // Public Function CalculateLinesOfCode() As Integer
+		  If Code.Trim = "" Then
+		    LinesOfCode = 0
+		    Return 0
+		  End If
+		  
+		  Var lines() As String = Code.Split(EndOfLine)
+		  
+		  // Count non-empty, non-comment lines
+		  Var count As Integer = 0
+		  For Each line As String In lines
+		    Var trimmed As String = line.Trim
+		    If trimmed <> "" And Not trimmed.BeginsWith("//") And Not trimmed.BeginsWith("'") Then
+		      count = count + 1
+		    End If
+		  Next
+		  
+		  LinesOfCode = count
+		  Return count
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub Constructor(elementType As String, name As String, fullPath As String, Optional fileName As String = "")
 		  Self.ElementType = elementType
 		  Self.Name = name
@@ -11,6 +36,8 @@ Protected Class CodeElement
 		  Self.ParameterCount = 0
 		  Self.OptionalParameterCount = 0
 		  Self.Parameters = ""
+		  
+		  
 		  
 		  // Parse module and class from full path
 		  If fullPath.Contains(".") Then
@@ -121,6 +148,10 @@ Protected Class CodeElement
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
+		LinesOfCode As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
 		ModuleName As String
 	#tag EndProperty
 
@@ -146,6 +177,10 @@ Protected Class CodeElement
 
 	#tag Property, Flags = &h0
 		ParentClass As String
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		RefactoringSuggestions() As RefactoringSuggestion
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
@@ -212,7 +247,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType=""
+			EditorType="MultiLineEditor"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="FullPath"
@@ -220,7 +255,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType=""
+			EditorType="MultiLineEditor"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="ParentClass"
@@ -228,7 +263,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType=""
+			EditorType="MultiLineEditor"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="ModuleName"
@@ -236,7 +271,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType=""
+			EditorType="MultiLineEditor"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="FileName"
@@ -244,7 +279,7 @@ Protected Class CodeElement
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType=""
+			EditorType="MultiLineEditor"
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="IsUsed"

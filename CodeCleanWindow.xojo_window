@@ -24,7 +24,7 @@ Begin DesktopWindow CodeCleanWindow
    Title           =   "Code Analyzer - Scan and Visualize"
    Type            =   0
    Visible         =   True
-   Width           =   676
+   Width           =   828
    Begin DesktopBevelButton btnScan
       Active          =   False
       AllowAutoDeactivate=   True
@@ -91,7 +91,7 @@ Begin DesktopWindow CodeCleanWindow
       HasBorder       =   True
       HasHorizontalScrollbar=   False
       HasVerticalScrollbar=   True
-      Height          =   560
+      Height          =   530
       HideSelection   =   True
       Index           =   -2147483648
       Italic          =   False
@@ -114,13 +114,13 @@ Begin DesktopWindow CodeCleanWindow
       TextAlignment   =   0
       TextColor       =   &c000000
       Tooltip         =   ""
-      Top             =   95
+      Top             =   125
       Transparent     =   False
       Underline       =   False
       UnicodeMode     =   1
       ValidationMask  =   ""
       Visible         =   True
-      Width           =   591
+      Width           =   743
    End
    Begin DesktopImageViewer ImageViewer1
       Active          =   False
@@ -131,7 +131,7 @@ Begin DesktopWindow CodeCleanWindow
       Image           =   1280350207
       Index           =   -2147483648
       InitialParent   =   ""
-      Left            =   605
+      Left            =   722
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -227,7 +227,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   249
+      Left            =   531
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -262,7 +262,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialValue    =   "Simple Layout\nCompact Layout\nHierarchical Layout"
       Italic          =   False
-      Left            =   234
+      Left            =   531
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -274,7 +274,7 @@ Begin DesktopWindow CodeCleanWindow
       TabPanelIndex   =   0
       TabStop         =   True
       Tooltip         =   ""
-      Top             =   54
+      Top             =   88
       Transparent     =   False
       Underline       =   False
       Visible         =   True
@@ -292,7 +292,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   440
+      Left            =   531
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -303,13 +303,63 @@ Begin DesktopWindow CodeCleanWindow
       TabPanelIndex   =   0
       TabStop         =   True
       Tooltip         =   ""
-      Top             =   23
+      Top             =   54
       Transparent     =   False
       Underline       =   False
       Value           =   True
       Visible         =   True
       VisualState     =   0
       Width           =   153
+   End
+   Begin DesktopBevelButton btnRefactoringSuggestions
+      Active          =   False
+      AllowAutoDeactivate=   True
+      AllowFocus      =   True
+      AllowTabStop    =   True
+      BackgroundColor =   &c00000000
+      BevelStyle      =   0
+      Bold            =   False
+      ButtonStyle     =   0
+      Caption         =   "Generate Refactoring Report"
+      CaptionAlignment=   3
+      CaptionDelta    =   0
+      CaptionPosition =   1
+      Enabled         =   False
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      HasBackgroundColor=   False
+      Height          =   22
+      Icon            =   0
+      IconAlignment   =   0
+      IconDeltaX      =   0
+      IconDeltaY      =   0
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   234
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MenuStyle       =   0
+      PanelIndex      =   0
+      Scope           =   2
+      TabIndex        =   7
+      TabPanelIndex   =   0
+      TextColor       =   &c00000000
+      Tooltip         =   ""
+      Top             =   54
+      Transparent     =   False
+      Underline       =   False
+      Value           =   False
+      Visible         =   True
+      Width           =   179
+      _mIndex         =   0
+      _mInitialParent =   ""
+      _mName          =   ""
+      _mPanelIndex    =   0
    End
 End
 #tag EndDesktopWindow
@@ -463,7 +513,7 @@ End
 		  // Enable the export and flowchart buttons
 		  ExportButton.Enabled = True
 		  btnGenerateFlowchart.Enabled = True
-		  
+		  btnRefactoringSuggestions.Enabled = True
 		  
 		  
 		  Var allElements() As CodeElement = mAnalyzer.GetAllElements()
@@ -589,6 +639,49 @@ End
 		    MessageBox("Flowchart PDF generated successfully!")
 		  Else
 		    MessageBox("Error generating flowchart PDF. Check the console for details.")
+		  End If
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events btnRefactoringSuggestions
+	#tag Event
+		Sub Pressed()
+		  If mAnalyzer = Nil Then
+		    MessageBox("Please scan a project first!")
+		    Return
+		  End If
+		  
+		  // Check if we have suggestions
+		  Var allMethods() As CodeElement = mAnalyzer.GetMethodElements()
+		  Var hasSuggestions As Boolean = False
+		  
+		  For Each method As CodeElement In allMethods
+		    If method.RefactoringSuggestions.Count > 0 Then
+		      hasSuggestions = True
+		      Exit For
+		    End If
+		  Next
+		  
+		  If Not hasSuggestions Then
+		    MessageBox("No refactoring suggestions found. Your code looks good!")
+		    Return
+		  End If
+		  
+		  // Get save location
+		  Var dlg As New SaveFileDialog
+		  dlg.SuggestedFileName = "RefactoringSuggestions_" + DateTime.Now.ToString("yyyy-MM-dd_HHmm") + ".pdf"
+		  dlg.Filter = "PDF Files (*.pdf)|*.pdf"
+		  
+		  Var saveFile As FolderItem = dlg.ShowModal()
+		  If saveFile = Nil Then Return
+		  
+		  // Generate the PDF
+		  Var generator As New ReportGenerator
+		  If generator.GenerateRefactoringSuggestionsReport(mAnalyzer, saveFile) Then
+		    MessageBox("Refactoring suggestions report generated successfully!")
+		    saveFile.Open()
+		  Else
+		    MessageBox("Error generating refactoring suggestions report.")
 		  End If
 		End Sub
 	#tag EndEvent

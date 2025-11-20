@@ -149,6 +149,77 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function CalculateRefactoringPDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
+		  // Private Function CalculateRefactoringPDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
+		  Var height As Double = margin * 3
+		  
+		  // Header
+		  height = height + 120
+		  
+		  // Summary section
+		  height = height + 150
+		  
+		  // Collect all suggestions and DEDUPLICATE
+		  Var highPriority() As RefactoringSuggestion
+		  Var mediumPriority() As RefactoringSuggestion
+		  Var lowPriority() As RefactoringSuggestion
+		  
+		  Var methods() As CodeElement = analyzer.GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    For Each suggestion As RefactoringSuggestion In method.RefactoringSuggestions
+		      Select Case suggestion.Priority
+		      Case "HIGH"
+		        highPriority.Add(suggestion)
+		      Case "MEDIUM"
+		        mediumPriority.Add(suggestion)
+		      Case "LOW"
+		        lowPriority.Add(suggestion)
+		      End Select
+		    Next
+		  Next
+		  
+		  // DEDUPLICATE - This is the critical fix!
+		  DeduplicateSuggestionsInPlace(highPriority)
+		  DeduplicateSuggestionsInPlace(mediumPriority)
+		  DeduplicateSuggestionsInPlace(lowPriority)
+		  
+		  // Calculate space for HIGH priority
+		  For Each suggestion As RefactoringSuggestion In highPriority
+		    height = height + 40  // Method name and title
+		    height = height + 25  // Description
+		    height = height + (suggestion.Suggestions.Count * lineHeight)
+		    height = height + 30  // Spacing
+		  Next
+		  
+		  // Calculate space for MEDIUM priority
+		  For Each suggestion As RefactoringSuggestion In mediumPriority
+		    height = height + 40
+		    height = height + 25
+		    height = height + (suggestion.Suggestions.Count * lineHeight)
+		    height = height + 30
+		  Next
+		  
+		  // Calculate space for LOW priority
+		  For Each suggestion As RefactoringSuggestion In lowPriority
+		    height = height + 40
+		    height = height + 25
+		    height = height + (suggestion.Suggestions.Count * lineHeight)
+		    height = height + 30
+		  Next
+		  
+		  // Footer
+		  height = height + 50
+		  
+		  // Add section headers (3 priorities * 45 pixels each)
+		  height = height + 135
+		  
+		  Return CType(height, Integer)
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function CountOccurrences(text As String, searchFor As String) As Integer
 		  // Count how many times searchFor appears in text
 		  
@@ -165,6 +236,93 @@ Protected Class ReportGenerator
 		  
 		  Return count
 		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function DeduplicateSuggestions(suggestions() As RefactoringSuggestion) As RefactoringSuggestion()
+		  // Private Function DeduplicateSuggestions(suggestions() As RefactoringSuggestion) As RefactoringSuggestion()
+		  Var uniqueSuggestions() As RefactoringSuggestion
+		  Var seenKeys As New Dictionary
+		  
+		  For Each suggestion As RefactoringSuggestion In suggestions
+		    // Create a unique key using Element.Name + Category + Description
+		    Var methodName As String = ""
+		    If suggestion.Element <> Nil Then
+		      methodName = suggestion.Element.Name
+		    End If
+		    
+		    Var key As String = methodName + "|" + suggestion.Category + "|" + suggestion.Description
+		    
+		    If Not seenKeys.HasKey(key) Then
+		      uniqueSuggestions.Add(suggestion)
+		      seenKeys.Value(key) = True
+		    End If
+		  Next
+		  
+		  Return uniqueSuggestions
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub DeduplicateSuggestionsInPlace(ByRef suggestions() As RefactoringSuggestion)
+		  // Private Sub DeduplicateSuggestionsInPlace(ByRef suggestions() As RefactoringSuggestion)
+		  '
+		  
+		  Var uniqueSuggestions() As RefactoringSuggestion
+		  Var seenKeys As New Dictionary
+		  
+		  For Each suggestion As RefactoringSuggestion In suggestions
+		    // Create a unique key
+		    Var methodName As String = ""
+		    If suggestion.Element <> Nil Then
+		      methodName = suggestion.Element.Name
+		    End If
+		    
+		    Var key As String = methodName + "|" + suggestion.Category + "|" + suggestion.Description
+		    
+		    If Not seenKeys.HasKey(key) Then
+		      uniqueSuggestions.Add(suggestion)
+		      seenKeys.Value(key) = True
+		    End If
+		  Next
+		  
+		  // Clear original array and copy unique ones back
+		  suggestions.RemoveAll
+		  For Each uniqueSugg As RefactoringSuggestion In uniqueSuggestions
+		    suggestions.Add(uniqueSugg)
+		  Next
+		  
+		  
+		  
+		  
+		  '
+		  '// Private Sub DeduplicateSuggestionsInPlace(ByRef suggestions() As RefactoringSuggestion)
+		  'Var uniqueSuggestions() As RefactoringSuggestion
+		  'Var seenKeys As New Dictionary
+		  '
+		  'For Each suggestion As RefactoringSuggestion In suggestions
+		  '// Create a unique key
+		  'Var methodName As String = ""
+		  'If suggestion.Element <> Nil Then
+		  'methodName = suggestion.Element.Name
+		  'End If
+		  '
+		  'Var key As String = methodName + "|" + suggestion.Category + "|" + suggestion.Description
+		  '
+		  'If Not seenKeys.HasKey(key) Then
+		  'uniqueSuggestions.Add(suggestion)
+		  'seenKeys.Value(key) = True
+		  'End If
+		  'Next
+		  '
+		  '// Replace the original array contents
+		  'suggestions.RemoveAll
+		  'For Each uniqueSugg As RefactoringSuggestion In uniqueSuggestions
+		  'suggestions.Add(uniqueSugg)
+		  'Next
+		  
+		End Sub
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
@@ -216,6 +374,77 @@ Protected Class ReportGenerator
 		    System.DebugLog("Error generating PDF: " + e.Message)
 		    Return False
 		  End Try
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function GenerateRefactoringSuggestionsReport(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
+		  // Function GenerateRefactoringSuggestionsReport(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
+		  Try
+		    System.DebugLog("=== Starting PDF Generation ===")
+		    
+		    // Setup
+		    Var pageWidth As Integer = 612
+		    Var margin As Double = 50
+		    Var lineHeight As Double = 14
+		    
+		    System.DebugLog("Calculating height...")
+		    // Calculate height needed
+		    Var totalHeight As Integer = CalculateRefactoringPDFHeight(analyzer, margin, lineHeight)
+		    System.DebugLog("Total height: " + totalHeight.ToString)
+		    
+		    // Add extra height buffer to prevent cutoff
+		    totalHeight = totalHeight + 50
+		    
+		    // Create PDF
+		    System.DebugLog("Creating PDF document...")
+		    Var pdf As New PDFDocument(pageWidth, totalHeight)
+		    Var g As Graphics = pdf.Graphics
+		    
+		    If g = Nil Then
+		      System.DebugLog("ERROR: Graphics context is Nil!")
+		      Return False
+		    End If
+		    System.DebugLog("Graphics context created successfully")
+		    
+		    // White background from absolute top
+		    g.DrawingColor = Color.White
+		    g.FillRectangle(0, 0, pageWidth, totalHeight)
+		    System.DebugLog("Background filled")
+		    
+		    Var yPos As Double = margin + 30
+		    
+		    // Render sections
+		    System.DebugLog("Rendering header...")
+		    yPos = RenderRefactoringHeader(g, pageWidth, margin, yPos)
+		    System.DebugLog("Header rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering summary...")
+		    yPos = RenderRefactoringSummary(g, analyzer, margin, lineHeight, yPos)
+		    System.DebugLog("Summary rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering suggestions...")
+		    yPos = RenderRefactoringSuggestions(g, analyzer, pageWidth, margin, lineHeight, yPos)
+		    System.DebugLog("Suggestions rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering footer...")
+		    yPos = RenderRefactoringFooter(g, pageWidth, margin, lineHeight, yPos)
+		    System.DebugLog("Footer rendered. yPos: " + yPos.ToString)
+		    
+		    // Save
+		    System.DebugLog("Saving PDF...")
+		    pdf.Save(saveFile)
+		    System.DebugLog("=== PDF SAVED SUCCESSFULLY ===")
+		    Return True
+		    
+		  Catch e As RuntimeException
+		    System.DebugLog("ERROR: " + e.Message)
+		    If e.Stack <> Nil Then
+		      System.DebugLog("Stack: " + String.FromArray(e.Stack, EndOfLine))
+		    End If
+		    Return False
+		  End Try
+		  
 		End Function
 	#tag EndMethod
 
@@ -683,6 +912,253 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function RenderPrioritySection(g As Graphics, sectionTitle As String, suggestions() As RefactoringSuggestion, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double, headerColor As Color) As Double
+		  // Private Function RenderPrioritySection(g As Graphics, sectionTitle As String, suggestions() As RefactoringSuggestion, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double, headerColor As Color) As Double
+		  // Section header
+		  g.FontSize = 16
+		  g.Bold = True
+		  g.DrawingColor = headerColor
+		  g.DrawText(sectionTitle, margin, yPos)
+		  yPos = yPos + 25
+		  
+		  // Separator line
+		  g.FillRectangle(margin, yPos, pageWidth - (margin * 2), 1)
+		  yPos = yPos + 20
+		  
+		  // Render each suggestion
+		  For Each suggestion As RefactoringSuggestion In suggestions
+		    yPos = RenderSingleSuggestion(g, suggestion, pageWidth, margin, lineHeight, yPos)
+		  Next
+		  
+		  yPos = yPos + 20
+		  
+		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderRefactoringFooter(g As Graphics, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Private Function RenderRefactoringFooter(g As Graphics, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Separator line
+		  g.DrawingColor = &c1E3A8A
+		  g.FillRectangle(margin, yPos, pageWidth - (margin * 2), 1)
+		  yPos = yPos + 15
+		  
+		  // Footer text
+		  g.FontSize = 9
+		  g.Bold = False
+		  g.DrawingColor = &c666666
+		  
+		  Var now As DateTime = DateTime.Now
+		  Var timestamp As String = now.ToString("d MMM yyyy 'at' h:mm:ss tt", Locale.Current)
+		  
+		  g.DrawText("Generated: " + timestamp, margin, yPos)
+		  yPos = yPos + lineHeight
+		  
+		  DrawCenteredText(g, "Review and prioritize these refactoring suggestions to improve code quality", pageWidth / 2, yPos, pageWidth - (margin * 2))
+		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderRefactoringHeader(g As Graphics, pageWidth As Integer, margin As Double, yPos As Double) As Double
+		  // Private Function RenderRefactoringHeader(g As Graphics, pageWidth As Integer, margin As Double, yPos As Double) As Double
+		  // Title with accent color
+		  g.FontSize = 24
+		  g.Bold = True
+		  g.DrawingColor = &c1E3A8A  // Deep red for emphasis
+		  DrawCenteredText(g, "REFACTORING SUGGESTIONS", pageWidth / 2, yPos, pageWidth - (margin * 2))
+		  yPos = yPos + 30
+		  
+		  // Subtitle
+		  g.FontSize = 12
+		  g.Bold = False
+		  g.DrawingColor = &c666666
+		  DrawCenteredText(g, "Actionable recommendations to improve code quality", pageWidth / 2, yPos, pageWidth - (margin * 2))
+		  yPos = yPos + 40
+		  
+		  // Separator line
+		  g.DrawingColor = &c1E3A8A
+		  g.FillRectangle(margin, yPos, pageWidth - (margin * 2), 2)
+		  yPos = yPos + 30
+		  
+		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderRefactoringSuggestions(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  '// Private Function RenderRefactoringSuggestions(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  '// Collect all suggestions and group by priority
+		  'Var highPriority() As RefactoringSuggestion
+		  'Var mediumPriority() As RefactoringSuggestion
+		  'Var lowPriority() As RefactoringSuggestion
+		  '
+		  'Var methods() As CodeElement = analyzer.GetMethodElements()
+		  'For Each method As CodeElement In methods
+		  'For Each suggestion As RefactoringSuggestion In method.RefactoringSuggestions
+		  'Select Case suggestion.Priority
+		  'Case "HIGH"
+		  'highPriority.Add(suggestion)
+		  'Case "MEDIUM"
+		  'mediumPriority.Add(suggestion)
+		  'Case "LOW"
+		  'lowPriority.Add(suggestion)
+		  'End Select
+		  'Next
+		  'Next
+		  '
+		  '// DEDUPLICATE using ByRef method (modifies arrays in place)
+		  'DeduplicateSuggestionsInPlace(highPriority)
+		  'DeduplicateSuggestionsInPlace(mediumPriority)
+		  'DeduplicateSuggestionsInPlace(lowPriority)
+		  '
+		  '// Render high priority first
+		  'If highPriority.Count > 0 Then
+		  'yPos = RenderPrioritySection(g, "HIGH PRIORITY - Fix These First!", highPriority, pageWidth, margin, lineHeight, yPos, &cDC143C)
+		  'End If
+		  '
+		  '// Then medium
+		  'If mediumPriority.Count > 0 Then
+		  'yPos = RenderPrioritySection(g, "MEDIUM PRIORITY", mediumPriority, pageWidth, margin, lineHeight, yPos, &cFF8C00)
+		  'End If
+		  '
+		  '// Then low (if any)
+		  'If lowPriority.Count > 0 Then
+		  'yPos = RenderPrioritySection(g, "LOW PRIORITY", lowPriority, pageWidth, margin, lineHeight, yPos, &c4169E1)
+		  'End If
+		  '
+		  'Return yPos
+		  '
+		  '
+		  
+		  // Private Function RenderRefactoringSuggestions(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Collect all suggestions and group by priority
+		  Var highPriority() As RefactoringSuggestion
+		  Var mediumPriority() As RefactoringSuggestion
+		  Var lowPriority() As RefactoringSuggestion
+		  
+		  Var methods() As CodeElement = analyzer.GetMethodElements()
+		  For Each method As CodeElement In methods
+		    For Each suggestion As RefactoringSuggestion In method.RefactoringSuggestions
+		      Select Case suggestion.Priority
+		      Case "HIGH"
+		        highPriority.Add(suggestion)
+		      Case "MEDIUM"
+		        mediumPriority.Add(suggestion)
+		      Case "LOW"
+		        lowPriority.Add(suggestion)
+		      End Select
+		    Next
+		  Next
+		  
+		  // DEBUG: Check counts BEFORE deduplication
+		  MessageBox("Before dedup - High: " + highPriority.Count.ToString + _
+		  " Medium: " + mediumPriority.Count.ToString + _
+		  " Low: " + lowPriority.Count.ToString)
+		  
+		  // DEDUPLICATE EACH PRIORITY GROUP
+		  DeduplicateSuggestionsInPlace(highPriority)
+		  DeduplicateSuggestionsInPlace(mediumPriority)
+		  DeduplicateSuggestionsInPlace(lowPriority)
+		  
+		  // DEBUG: Check counts AFTER deduplication
+		  MessageBox("After dedup - High: " + highPriority.Count.ToString + _
+		  " Medium: " + mediumPriority.Count.ToString + _
+		  " Low: " + lowPriority.Count.ToString)
+		  
+		  // Render high priority first
+		  If highPriority.Count > 0 Then
+		    yPos = RenderPrioritySection(g, "HIGH PRIORITY - Fix These First!", highPriority, pageWidth, margin, lineHeight, yPos, &cDC143C)
+		  End If
+		  
+		  // Then medium
+		  If mediumPriority.Count > 0 Then
+		    yPos = RenderPrioritySection(g, "MEDIUM PRIORITY", mediumPriority, pageWidth, margin, lineHeight, yPos, &cFF8C00)
+		  End If
+		  
+		  // Then low (if any)
+		  If lowPriority.Count > 0 Then
+		    yPos = RenderPrioritySection(g, "LOW PRIORITY", lowPriority, pageWidth, margin, lineHeight, yPos, &c4169E1)
+		  End If
+		  
+		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderRefactoringSummary(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Private Function RenderRefactoringSummary(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Collect and categorize suggestions
+		  Var highPriority() As RefactoringSuggestion
+		  Var mediumPriority() As RefactoringSuggestion
+		  Var lowPriority() As RefactoringSuggestion
+		  
+		  Var methods() As CodeElement = analyzer.GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    For Each suggestion As RefactoringSuggestion In method.RefactoringSuggestions
+		      Select Case suggestion.Priority
+		      Case "HIGH"
+		        highPriority.Add(suggestion)
+		      Case "MEDIUM"
+		        mediumPriority.Add(suggestion)
+		      Case "LOW"
+		        lowPriority.Add(suggestion)
+		      End Select
+		    Next
+		  Next
+		  
+		  // DEDUPLICATE BEFORE COUNTING - This is the fix!
+		  DeduplicateSuggestionsInPlace(highPriority)
+		  DeduplicateSuggestionsInPlace(mediumPriority)
+		  DeduplicateSuggestionsInPlace(lowPriority)
+		  
+		  // Calculate total from deduplicated arrays
+		  Var totalIssues As Integer = highPriority.Count + mediumPriority.Count + lowPriority.Count
+		  
+		  // Summary box
+		  g.FontSize = 14
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("Summary", margin, yPos)
+		  yPos = yPos + lineHeight + 10
+		  
+		  g.FontSize = 12
+		  g.Bold = False
+		  
+		  g.DrawText("Total Issues Found: " + totalIssues.ToString, margin + 20, yPos)
+		  yPos = yPos + lineHeight + 5
+		  
+		  // High priority in red
+		  g.DrawingColor = &cDC143C  // Crimson red
+		  g.DrawText("  [HIGH] High Priority: " + highPriority.Count.ToString + " (Fix First!)", margin + 20, yPos)
+		  yPos = yPos + lineHeight + 5
+		  
+		  // Medium priority in orange
+		  g.DrawingColor = &cFF8C00  // Dark orange
+		  g.DrawText("  [Medium] Medium Priority: " + mediumPriority.Count.ToString, margin + 20, yPos)
+		  yPos = yPos + lineHeight + 5
+		  
+		  // Low priority in blue (if any)
+		  If lowPriority.Count > 0 Then
+		    g.DrawingColor = &c4169E1  // Royal blue
+		    g.DrawText("  [Low] Low Priority: " + lowPriority.Count.ToString, margin + 20, yPos)
+		    yPos = yPos + lineHeight + 5
+		  End If
+		  
+		  yPos = yPos + 20
+		  
+		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function RenderRelationships(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
 		  // Render relationship analysis section
 		  
@@ -759,6 +1235,73 @@ Protected Class ReportGenerator
 		  Next
 		  
 		  Return yPos
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderSingleSuggestion(g As Graphics, suggestion As RefactoringSuggestion, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Private Function RenderSingleSuggestion(g As Graphics, suggestion As RefactoringSuggestion, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Safety checks
+		  If suggestion = Nil Then
+		    System.DebugLog("WARNING: Suggestion is Nil")
+		    Return yPos
+		  End If
+		  
+		  If suggestion.Element = Nil Then
+		    System.DebugLog("WARNING: Suggestion.Element is Nil")
+		    Return yPos
+		  End If
+		  
+		  // Method name in bold
+		  g.FontSize = 11
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("--> " + suggestion.Element.FullPath, margin + 10, yPos)
+		  yPos = yPos + lineHeight + 3
+		  // Issue title
+		  g.FontSize = 10
+		  g.Bold = True
+		  g.DrawingColor = &c444444
+		  g.DrawText("   " + suggestion.Title, margin + 10, yPos)
+		  yPos = yPos + lineHeight + 2
+		  
+		  // Description
+		  g.FontSize = 9
+		  g.Bold = False
+		  g.DrawingColor = &c666666
+		  g.DrawText("   " + suggestion.Description, margin + 10, yPos)
+		  yPos = yPos + lineHeight + 8
+		  
+		  // Suggestions with checkboxes
+		  g.FontSize = 9
+		  g.DrawingColor = Color.Black
+		  
+		  For Each tip As String In suggestion.Suggestions
+		    If tip.Trim = "" Then
+		      yPos = yPos + 3  // Small space for blank lines
+		      Continue
+		    End If
+		    
+		    // Wrap long lines
+		    Var maxWidth As Double = pageWidth - margin - 40
+		    Var wrappedLines() As String = WrapText(g, tip, maxWidth)
+		    
+		    For i As Integer = 0 To wrappedLines.LastIndex
+		      If i = 0 Then
+		        // First line with checkbox
+		        g.DrawText("  [  ]  " + wrappedLines(i), margin + 20, yPos)
+		      Else
+		        // Continuation lines indented
+		        g.DrawText("      " + wrappedLines(i), margin + 20, yPos)
+		      End If
+		      yPos = yPos + lineHeight
+		    Next
+		  Next
+		  
+		  yPos = yPos + 15  // Space between suggestions
+		  
+		  Return yPos
+		  
 		End Function
 	#tag EndMethod
 
@@ -976,6 +1519,40 @@ Protected Class ReportGenerator
 		  Next
 		  
 		  Return sorted
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function WrapText(g As Graphics, text As String, maxWidth As Double) As String()
+		  // Private Function WrapText(g As Graphics, text As String, maxWidth As Double) As String()
+		  
+		  Var lines() As String
+		  Var words() As String = Text.Split(" ")
+		  Var currentLine As String = ""
+		  
+		  For Each word As String In words
+		    Var testLine As String
+		    If currentLine = "" Then
+		      testLine = word
+		    Else
+		      testLine = currentLine + " " + word
+		    End If
+		    
+		    If g.TextWidth(testLine) <= maxWidth Then
+		      currentLine = testLine
+		    Else
+		      If currentLine <> "" Then
+		        lines.Add(currentLine)
+		      End If
+		      currentLine = word
+		    End If
+		  Next
+		  
+		  If currentLine <> "" Then
+		    lines.Add(currentLine)
+		  End If
+		  
+		  Return lines
 		End Function
 	#tag EndMethod
 

@@ -1,6 +1,84 @@
 #tag Module
 Protected Module CodeCleanWindowHelpers
 	#tag Method, Flags = &h21
+		Private Function BuildRefactoringSuggestionsSection(proj As ProjectAnalyzer) As String
+		  // Function BuildRefactoringSuggestionsSection(proj As ProjectAnalyzer) As String
+		  Var report As String = ""
+		  report = report + EndOfLine + "REFACTORING SUGGESTIONS" + EndOfLine
+		  report = report + "=====================" + EndOfLine + EndOfLine
+		  
+		  // Collect and group by priority
+		  Var highPriority() As RefactoringSuggestion
+		  Var mediumPriority() As RefactoringSuggestion
+		  Var lowPriority() As RefactoringSuggestion
+		  
+		  Var methods() As CodeElement = proj.GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    For Each suggestion As RefactoringSuggestion In method.RefactoringSuggestions
+		      Select Case suggestion.Priority
+		      Case "HIGH"
+		        highPriority.Add(suggestion)
+		      Case "MEDIUM"
+		        mediumPriority.Add(suggestion)
+		      Case "LOW"
+		        lowPriority.Add(suggestion)
+		      End Select
+		    Next
+		  Next
+		  
+		  // DEDUPLICATE - This is the fix!
+		  Var generator As New ReportGenerator
+		  generator.DeduplicateSuggestionsInPlace(highPriority)
+		  generator.DeduplicateSuggestionsInPlace(mediumPriority)
+		  generator.DeduplicateSuggestionsInPlace(lowPriority)
+		  
+		  // Calculate total from deduplicated counts
+		  Var totalSuggestions As Integer = highPriority.Count + mediumPriority.Count + lowPriority.Count
+		  
+		  If totalSuggestions = 0 Then
+		    report = report + "✓ No refactoring suggestions - code looks good!" + EndOfLine
+		    Return report
+		  End If
+		  
+		  report = report + "Total Suggestions: " + totalSuggestions.ToString + EndOfLine
+		  report = report + "  - High Priority: " + highPriority.Count.ToString + EndOfLine
+		  report = report + "  - Medium Priority: " + mediumPriority.Count.ToString + EndOfLine
+		  report = report + "  - Low Priority: " + lowPriority.Count.ToString + EndOfLine + EndOfLine
+		  
+		  // Show high priority first
+		  If highPriority.Count > 0 Then
+		    report = report + "🔴 HIGH PRIORITY (Fix First)" + EndOfLine
+		    report = report + "----------------------------" + EndOfLine
+		    For Each suggestion As RefactoringSuggestion In highPriority
+		      report = report + FormatSuggestion(suggestion) + EndOfLine
+		    Next
+		  End If
+		  
+		  // Then medium
+		  If mediumPriority.Count > 0 Then
+		    report = report + EndOfLine + "🟡 MEDIUM PRIORITY" + EndOfLine
+		    report = report + "------------------" + EndOfLine
+		    For Each suggestion As RefactoringSuggestion In mediumPriority
+		      report = report + FormatSuggestion(suggestion) + EndOfLine
+		    Next
+		  End If
+		  
+		  // And low (if any)
+		  If lowPriority.Count > 0 Then
+		    report = report + EndOfLine + "🔵 LOW PRIORITY" + EndOfLine
+		    report = report + "---------------" + EndOfLine
+		    For Each suggestion As RefactoringSuggestion In lowPriority
+		      report = report + FormatSuggestion(suggestion) + EndOfLine
+		    Next
+		  End If
+		  
+		  Return report
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function BuildRelationshipSection(analyzer As ProjectAnalyzer) As String
 		  // Generate the relationship analysis section
 		  
@@ -191,10 +269,34 @@ Protected Module CodeCleanWindowHelpers
 		End Function
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Function FormatSuggestion(suggestion As RefactoringSuggestion) As String
+		  // Private Function FormatSuggestion(suggestion As RefactoringSuggestion) As String
+		  Var output As String = ""
+		  
+		  output = output + "📍 " + suggestion.Element.FullPath + EndOfLine
+		  output = output + "   " + suggestion.Title + EndOfLine
+		  output = output + "   " + suggestion.Description + EndOfLine
+		  output = output + EndOfLine
+		  
+		  For Each tip As String In suggestion.Suggestions
+		    If tip.Trim <> "" Then
+		      output = output + "   → " + tip + EndOfLine
+		    Else
+		      output = output + EndOfLine
+		    End If
+		  Next
+		  
+		  output = output + EndOfLine
+		  
+		  Return output
+		  
+		End Function
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub GenerateTextReport(Extends win As CodeCleanWindow)
-		  // REFACTORED: Clean orchestration of report generation
-		  
+		  // GenerateTextReport(Extends win As CodeCleanWindow)
 		  If win.mAnalyzer = Nil Then Return
 		  
 		  Var output As String = ""
@@ -204,6 +306,8 @@ Protected Module CodeCleanWindowHelpers
 		  output = output + BuildStatisticsSection(win.mAnalyzer)
 		  output = output + BuildUnusedElementsSection(win.mAnalyzer)
 		  output = output + BuildRelationshipSection(win.mAnalyzer)
+		  
+		  output = output + BuildRefactoringSuggestionsSection(win.mAnalyzer)
 		  output = output + BuildReportFooter()
 		  
 		  win.txtResults.Text = output

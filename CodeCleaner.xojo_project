@@ -17,6 +17,7 @@ Class=ReportGenerator;ReportGenerator.xojo_code;&h0000000048B107FF;&h00000000000
 Class=MethodMetrics;MethodMetrics.xojo_code;&h0000000017629FFF;&h0000000000000000;false
 Class=ErrorPattern;ErrorPattern.xojo_code;&h000000007C3EB7FF;&h0000000000000000;false
 Class=ParsingContext;ParsingContext.xojo_code;&h000000000F91DFFF;&h0000000000000000;false
+Class=RefactoringSuggestion;RefactoringSuggestion.xojo_code;&h0000000067C587FF;&h0000000000000000;false
 DefaultWindow=CodeCleanWindow
 AppMenuBar=MainMenuBar
 MajorVersion=1

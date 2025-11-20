@@ -12,6 +12,34 @@ Protected Class ProjectAnalyzer
 		End Sub
 	#tag EndMethod
 
+	#tag Method, Flags = &h21
+		Private Sub AnalyzeDeepNesting(method As CodeElement, depth As Integer)
+		  // Private Sub AnalyzeDeepNesting(method As CodeElement, depth As Integer)
+		  Var suggestion As New RefactoringSuggestion(method, "NESTING", "MEDIUM")
+		  suggestion.Title = "Deep Nesting (" + depth.ToString + " levels)"
+		  suggestion.Description = "Deeply nested code is hard to read and understand."
+		  
+		  If depth > 5 Then
+		    suggestion.Priority = "HIGH"
+		  End If
+		  
+		  suggestion.Suggestions.Add("Use guard clauses with early returns to reduce nesting")
+		  suggestion.Suggestions.Add("Extract nested blocks into separate methods")
+		  suggestion.Suggestions.Add("Consider inverting conditions to flatten the structure")
+		  suggestion.Suggestions.Add("")
+		  suggestion.Suggestions.Add("Example refactoring:")
+		  suggestion.Suggestions.Add("  Instead of:  If condition1 Then")
+		  suggestion.Suggestions.Add("                 If condition2 Then")
+		  suggestion.Suggestions.Add("                   // do work")
+		  suggestion.Suggestions.Add("  Use:         If Not condition1 Then Return")
+		  suggestion.Suggestions.Add("               If Not condition2 Then Return")
+		  suggestion.Suggestions.Add("               // do work")
+		  
+		  method.RefactoringSuggestions.Add(suggestion)
+		  
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h0
 		Sub AnalyzeErrorHandling()
 		  // Analyze error handling patterns in all methods
@@ -94,6 +122,191 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Sub AnalyzeHighComplexity(method As CodeElement)
+		  // Private Sub AnalyzeHighComplexity(method As CodeElement)
+		  Var suggestion As New RefactoringSuggestion(method, "COMPLEXITY", "HIGH")
+		  suggestion.Title = "High Cyclomatic Complexity (" + method.CyclomaticComplexity.ToString + ")"
+		  suggestion.Description = "This method has high complexity, making it difficult to understand and test."
+		  
+		  // Count conditional statements
+		  Var ifCount As Integer = CountOccurrencesInString(method.Code.Uppercase, " IF ")
+		  Var caseCount As Integer = CountOccurrencesInString(method.Code.Uppercase, " CASE ")
+		  
+		  If ifCount > 5 Then
+		    suggestion.Suggestions.Add("Extract " + ifCount.ToString + " conditional checks into separate validation methods")
+		    suggestion.Suggestions.Add("Use guard clauses (early returns) to reduce nesting")
+		  End If
+		  
+		  If caseCount > 0 Then
+		    suggestion.Suggestions.Add("Consider using a Dictionary or Strategy pattern instead of Select/Case")
+		  End If
+		  
+		  If method.CyclomaticComplexity > 15 Then
+		    suggestion.Suggestions.Add("URGENT: Split this method into smaller, focused methods")
+		    suggestion.Suggestions.Add("Target complexity: < 10 per method")
+		  Else
+		    suggestion.Suggestions.Add("Refactor to reduce complexity below 10")
+		  End If
+		  
+		  method.RefactoringSuggestions.Add(suggestion)
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub AnalyzeLongMethod(method As CodeElement)
+		  // Private Sub AnalyzeLongMethod(method As CodeElement)
+		  Var suggestion As New RefactoringSuggestion(method, "LENGTH", "MEDIUM")
+		  suggestion.Title = "Long Method (" + method.LinesOfCode.ToString + " lines)"
+		  suggestion.Description = "This method is too long, making it hard to understand its purpose."
+		  
+		  If method.LinesOfCode > 100 Then
+		    suggestion.Priority = "HIGH"
+		    suggestion.Suggestions.Add("URGENT: This method is extremely long - split into multiple methods")
+		  End If
+		  
+		  suggestion.Suggestions.Add("Identify distinct logical sections and extract them into separate methods")
+		  suggestion.Suggestions.Add("Target: Keep methods under 30 lines for better readability")
+		  suggestion.Suggestions.Add("Look for repeated code blocks that can be extracted")
+		  
+		  // Check for comments that indicate sections
+		  If method.Code.Contains("// ") Or method.Code.Contains("' ") Then
+		    suggestion.Suggestions.Add("Your comments suggest natural break points - each commented section could be a method")
+		  End If
+		  
+		  method.RefactoringSuggestions.Add(suggestion)
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub AnalyzeManyParameters(method As CodeElement)
+		  // Private Sub AnalyzeManyParameters(method As CodeElement)
+		  Var suggestion As New RefactoringSuggestion(method, "PARAMETERS", "MEDIUM")
+		  suggestion.Title = "Too Many Parameters (" + method.ParameterCount.ToString + ")"
+		  suggestion.Description = "Methods with many parameters are hard to call and maintain."
+		  
+		  // Count ByRef parameters
+		  Var byRefCount As Integer = CountOccurrencesInString(method.Parameters.Uppercase, "BYREF")
+		  
+		  If byRefCount > 3 Then
+		    suggestion.Priority = "HIGH"
+		    suggestion.Suggestions.Add("CRITICAL: " + byRefCount.ToString + " ByRef parameters detected - consider returning a result object instead")
+		    suggestion.Suggestions.Add("Create a Result class to return multiple values")
+		  End If
+		  
+		  suggestion.Suggestions.Add("Create a parameter object to group related parameters")
+		  suggestion.Suggestions.Add("Example: Instead of DrawNode(x, y, width, height, color, label)")
+		  suggestion.Suggestions.Add("         Use: DrawNode(nodeConfig As NodeConfiguration)")
+		  
+		  If method.ParameterCount > 7 Then
+		    suggestion.Suggestions.Add("Consider using a Builder pattern for complex object construction")
+		  End If
+		  
+		  method.RefactoringSuggestions.Add(suggestion)
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Sub AnalyzeMissingErrorHandling(method As CodeElement)
+		  // Private Sub AnalyzeMissingErrorHandling(method As CodeElement)
+		  
+		  Var suggestion As New RefactoringSuggestion(method, "ERROR_HANDLING", "HIGH")
+		  suggestion.Title = "Missing Error Handling"
+		  suggestion.Description = "This method performs risky operations without proper error handling."
+		  
+		  // Build list of risky operations
+		  Var riskyOps() As String
+		  For Each pattern As ErrorPattern In method.RiskyPatterns
+		    riskyOps.Add(pattern.PatternType + " (" + pattern.RiskLevel + ")")
+		  Next
+		  
+		  // Manually join the array
+		  Var joinedOps As String = ""
+		  For i As Integer = 0 To riskyOps.LastIndex
+		    If i > 0 Then joinedOps = joinedOps + ", "
+		    joinedOps = joinedOps + riskyOps(i)
+		  Next
+		  suggestion.Suggestions.Add("Add Try/Catch block to handle: " + joinedOps)
+		  
+		  
+		  // Provide specific examples based on risk type
+		  For Each pattern As ErrorPattern In method.RiskyPatterns
+		    Select Case pattern.PatternType
+		    Case "DATABASE"
+		      suggestion.Suggestions.Add("Catch DatabaseException for SQL errors")
+		    Case "FILE_IO"
+		      suggestion.Suggestions.Add("Catch IOException for file access errors")
+		    Case "NETWORK"
+		      suggestion.Suggestions.Add("Catch SocketException or IOException for network errors")
+		    Case "TYPE_CONVERSION"
+		      suggestion.Suggestions.Add("Validate data before conversion or use Try/Catch")
+		    End Select
+		  Next
+		  
+		  // Show example code structure
+		  suggestion.Suggestions.Add("")
+		  suggestion.Suggestions.Add("Example structure:")
+		  suggestion.Suggestions.Add("  Try")
+		  suggestion.Suggestions.Add("    // Your risky operation here")
+		  suggestion.Suggestions.Add("  Catch e As IOException")
+		  suggestion.Suggestions.Add("    // Handle the error appropriately")
+		  suggestion.Suggestions.Add("  End Try")
+		  
+		  method.RefactoringSuggestions.Add(suggestion)
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub AnalyzeRefactoringOpportunities()
+		  // Public Sub AnalyzeRefactoringOpportunities()
+		  System.DebugLog("=== Starting Refactoring Analysis ===")
+		  
+		  Var methods() As CodeElement = GetMethodElements()
+		  
+		  For Each method As CodeElement In methods
+		    // Skip if no code
+		    If method.Code.Trim = "" Then Continue
+		    
+		    // Calculate LOC if not already done
+		    If method.LinesOfCode = 0 Then
+		      call method.CalculateLinesOfCode()
+		    End If
+		    
+		    // Analyze complexity
+		    If method.CyclomaticComplexity > 10 Then
+		      AnalyzeHighComplexity(method)
+		    End If
+		    
+		    // Analyze length
+		    If method.LinesOfCode > 50 Then
+		      AnalyzeLongMethod(method)
+		    End If
+		    
+		    // Analyze parameters
+		    If method.ParameterCount > 5 Then
+		      AnalyzeManyParameters(method)
+		    End If
+		    
+		    // Analyze error handling
+		    If method.RiskyPatterns.Count > 0 Then
+		      AnalyzeMissingErrorHandling(method)
+		    End If
+		    
+		    // Analyze nesting depth
+		    Var nestingDepth As Integer = CalculateNestingDepth(method.Code)
+		    If nestingDepth > 3 Then
+		      AnalyzeDeepNesting(method, nestingDepth)
+		    End If
+		  Next
+		  
+		  System.DebugLog("=== Refactoring Analysis Complete ===")
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function BuildFullPath(moduleName As String, className As String, elementName As String) As String
 		  // Private Function BuildFullPath(moduleName As String, className As String, elementName As String) As String
 		  If moduleName <> "" And className <> "" Then
@@ -160,6 +373,37 @@ Protected Class ProjectAnalyzer
 		    End If
 		  Next
 		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function CalculateNestingDepth(code As String) As Integer
+		  // Private Function CalculateNestingDepth(code As String) As Integer
+		  Var lines() As String = code.Split(EndOfLine)
+		  Var maxDepth As Integer = 0
+		  Var currentDepth As Integer = 0
+		  
+		  For Each line As String In lines
+		    Var trimmed As String = line.Trim.Uppercase
+		    
+		    // Increase depth for block starts
+		    If trimmed.BeginsWith("IF ") Or trimmed.BeginsWith("FOR ") Or _
+		      trimmed.BeginsWith("WHILE ") Or trimmed.BeginsWith("SELECT ") Or _
+		      trimmed.BeginsWith("TRY") Then
+		      currentDepth = currentDepth + 1
+		      maxDepth = Max(maxDepth, currentDepth)
+		    End If
+		    
+		    // Decrease depth for block ends
+		    If trimmed.BeginsWith("END IF") Or trimmed.BeginsWith("NEXT") Or _
+		      trimmed.BeginsWith("WEND") Or trimmed.BeginsWith("END SELECT") Or _
+		      trimmed.BeginsWith("END TRY") Then
+		      currentDepth = currentDepth - 1
+		    End If
+		  Next
+		  
+		  Return maxDepth
+		  
+		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
@@ -1352,6 +1596,9 @@ Protected Class ProjectAnalyzer
 		      Continue
 		    End Try
 		  Next
+		  
+		  // After building relationships and error analysis
+		  AnalyzeRefactoringOpportunities()
 		End Sub
 	#tag EndMethod
 
