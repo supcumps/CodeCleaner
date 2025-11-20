@@ -18,6 +18,7 @@ Class=MethodMetrics;MethodMetrics.xojo_code;&h0000000017629FFF;&h000000000000000
 Class=ErrorPattern;ErrorPattern.xojo_code;&h000000007C3EB7FF;&h0000000000000000;false
 Class=ParsingContext;ParsingContext.xojo_code;&h000000000F91DFFF;&h0000000000000000;false
 Class=RefactoringSuggestion;RefactoringSuggestion.xojo_code;&h0000000067C587FF;&h0000000000000000;false
+Class=QualityScore;QualityScore.xojo_code;&h00000000494787FF;&h0000000000000000;false
 DefaultWindow=CodeCleanWindow
 AppMenuBar=MainMenuBar
 MajorVersion=1

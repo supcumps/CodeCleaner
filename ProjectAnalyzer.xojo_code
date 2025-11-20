@@ -376,6 +376,34 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function CalculateMethodComplexity(method As CodeElement) As Integer
+		  // Private Function CalculateMethodComplexity(method As CodeElement) As Integer
+		  ' Calculate cyclomatic complexity for a method
+		  
+		  Var complexity As Integer = 1
+		  Var upperCode As String = method.Code.Uppercase
+		  
+		  ' Decision points
+		  complexity = complexity + CountOccurrencesInString(upperCode, " IF ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "IF ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, "ELSEIF ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " FOR ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "FOR ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " WHILE ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "WHILE ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " DO ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "DO ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " CASE ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "CASE ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " AND ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " OR ")
+		  
+		  Return complexity
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function CalculateNestingDepth(code As String) As Integer
 		  // Private Function CalculateNestingDepth(code As String) As Integer
 		  Var lines() As String = code.Split(EndOfLine)
@@ -402,6 +430,269 @@ Protected Class ProjectAnalyzer
 		  Next
 		  
 		  Return maxDepth
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function CalculateQualityScore() As QualityScore
+		  //Function CalculateQualityScore() As QualityScore
+		  ' Calculate comprehensive quality score for the project
+		  
+		  Var score As New QualityScore
+		  
+		  Var allMethods() As CodeElement = GetMethodElements()
+		  
+		  If allMethods.Count = 0 Then
+		    ' No methods to analyze
+		    score.OverallScore = 0
+		    score.Grade = "N/A"
+		    Return score
+		  End If
+		  
+		  ' ==============================================
+		  ' 1. ERROR HANDLING COVERAGE (30%)
+		  ' ==============================================
+		  Var methodsWithRiskyOps As Integer = 0
+		  Var methodsWithErrorHandling As Integer = 0
+		  
+		  For Each method As CodeElement In allMethods
+		    ' Check if method has risky operations
+		    Var hasRiskyOps As Boolean = False
+		    Var code As String = method.Code.Uppercase
+		    
+		    ' Database operations
+		    If code.IndexOf("DATABASE") >= 0 Or code.IndexOf("RECORDSET") >= 0 Or _
+		      code.IndexOf("SQL") >= 0 Or code.IndexOf("QUERY") >= 0 Then
+		      hasRiskyOps = True
+		    End If
+		    
+		    ' File operations
+		    If code.IndexOf("FOLDERITEM") >= 0 Or code.IndexOf("TEXTINPUTSTREAM") >= 0 Or _
+		      code.IndexOf("TEXTOUTPUTSTREAM") >= 0 Or code.IndexOf("BINARYSTREAM") >= 0 Then
+		      hasRiskyOps = True
+		    End If
+		    
+		    ' Network operations
+		    If code.IndexOf("URLCONNECTION") >= 0 Or code.IndexOf("SOCKET") >= 0 Or _
+		      code.IndexOf("HTTP") >= 0 Then
+		      hasRiskyOps = True
+		    End If
+		    
+		    ' Type conversions
+		    If code.IndexOf(".TOINTEGER") >= 0 Or code.IndexOf(".TODOUBLE") >= 0 Or _
+		      code.IndexOf("VAL(") >= 0 Or code.IndexOf("CTYPE(") >= 0 Then
+		      hasRiskyOps = True
+		    End If
+		    
+		    If hasRiskyOps Then
+		      methodsWithRiskyOps = methodsWithRiskyOps + 1
+		      
+		      ' Check if it has error handling
+		      If code.IndexOf("TRY") >= 0 And code.IndexOf("CATCH") >= 0 Then
+		        methodsWithErrorHandling = methodsWithErrorHandling + 1
+		      End If
+		    End If
+		  Next
+		  
+		  If methodsWithRiskyOps > 0 Then
+		    score.ErrorHandlingCoverage = (methodsWithErrorHandling / methodsWithRiskyOps) * 100
+		    score.ErrorHandlingScore = score.ErrorHandlingCoverage
+		  Else
+		    ' No risky operations found - perfect score
+		    score.ErrorHandlingCoverage = 100
+		    score.ErrorHandlingScore = 100
+		  End If
+		  
+		  ' ==============================================
+		  ' 2. AVERAGE COMPLEXITY (25%)
+		  ' ==============================================
+		  Var totalComplexity As Integer = 0
+		  Var methodsWithCode As Integer = 0
+		  
+		  For Each method As CodeElement In allMethods
+		    If method.Code.Trim <> "" Then
+		      Var complexity As Integer = CalculateMethodComplexity(method)
+		      totalComplexity = totalComplexity + complexity
+		      methodsWithCode = methodsWithCode + 1
+		    End If
+		  Next
+		  
+		  If methodsWithCode > 0 Then
+		    score.AverageComplexity = totalComplexity / methodsWithCode
+		  Else
+		    score.AverageComplexity = 0
+		  End If
+		  
+		  ' Score complexity (lower is better)
+		  ' Excellent: 1-10 = 100
+		  ' Good: 11-15 = 80
+		  ' Fair: 16-20 = 60
+		  ' Poor: 21-30 = 40
+		  ' Critical: 31+ = 20
+		  If score.AverageComplexity <= 10 Then
+		    score.ComplexityScore = 100
+		  ElseIf score.AverageComplexity <= 15 Then
+		    score.ComplexityScore = 100 - ((score.AverageComplexity - 10) * 4)
+		  ElseIf score.AverageComplexity <= 20 Then
+		    score.ComplexityScore = 80 - ((score.AverageComplexity - 15) * 4)
+		  ElseIf score.AverageComplexity <= 30 Then
+		    score.ComplexityScore = 60 - ((score.AverageComplexity - 20) * 2)
+		  Else
+		    score.ComplexityScore = 20
+		  End If
+		  
+		  ' ==============================================
+		  ' 3. CODE REUSE (LOW UNUSED CODE) (20%)
+		  ' ==============================================
+		  Var allElements() As CodeElement = GetAllElements()
+		  Var unusedElements() As CodeElement = GetUnusedElements()
+		  
+		  If allElements.Count > 0 Then
+		    score.UnusedPercentage = (unusedElements.Count / allElements.Count) * 100
+		    score.CodeReuseScore = 100 - score.UnusedPercentage
+		    
+		    ' Ensure score doesn't go negative
+		    If score.CodeReuseScore < 0 Then
+		      score.CodeReuseScore = 0
+		    End If
+		  Else
+		    score.UnusedPercentage = 0
+		    score.CodeReuseScore = 100
+		  End If
+		  
+		  ' ==============================================
+		  ' 4. PARAMETER COMPLEXITY (15%)
+		  ' ==============================================
+		  Var totalParams As Integer = 0
+		  Var totalOptionalParams As Integer = 0
+		  Var methodsWithManyParams As Integer = 0
+		  
+		  For Each method As CodeElement In allMethods
+		    totalParams = totalParams + method.ParameterCount
+		    totalOptionalParams = totalOptionalParams + method.OptionalParameterCount
+		    
+		    If method.ParameterCount > 5 Then
+		      methodsWithManyParams = methodsWithManyParams + 1
+		    End If
+		  Next
+		  
+		  If allMethods.Count > 0 Then
+		    score.AverageParameters = totalParams / allMethods.Count
+		  Else
+		    score.AverageParameters = 0
+		  End If
+		  
+		  ' Score parameters (lower is better)
+		  ' Excellent: 0-2 avg = 100
+		  ' Good: 2-3 avg = 85
+		  ' Fair: 3-4 avg = 70
+		  ' Poor: 4-5 avg = 50
+		  ' Critical: 5+ avg = 30
+		  If score.AverageParameters <= 2 Then
+		    score.ParameterScore = 100
+		  ElseIf score.AverageParameters <= 3 Then
+		    score.ParameterScore = 100 - ((score.AverageParameters - 2) * 15)
+		  ElseIf score.AverageParameters <= 4 Then
+		    score.ParameterScore = 85 - ((score.AverageParameters - 3) * 15)
+		  ElseIf score.AverageParameters <= 5 Then
+		    score.ParameterScore = 70 - ((score.AverageParameters - 4) * 20)
+		  Else
+		    score.ParameterScore = 30
+		  End If
+		  
+		  ' Penalty for methods with too many parameters
+		  If allMethods.Count > 0 Then
+		    Var excessiveParamPenalty As Double = (methodsWithManyParams / allMethods.Count) * 30
+		    score.ParameterScore = score.ParameterScore - excessiveParamPenalty
+		    If score.ParameterScore < 0 Then
+		      score.ParameterScore = 0
+		    End If
+		  End If
+		  
+		  ' ==============================================
+		  ' 5. DOCUMENTATION COVERAGE (10%)
+		  ' ==============================================
+		  Var methodsWithDocs As Integer = 0
+		  
+		  For Each method As CodeElement In allMethods
+		    If method.Code.Trim <> "" Then
+		      Var code As String = method.Code
+		      
+		      ' Look for comment markers at the beginning of the method
+		      ' This is a simple heuristic
+		      Var lines() As String = code.Split(EndOfLine)
+		      Var hasComment As Boolean = False
+		      
+		      For Each line As String In lines
+		        Var trimmed As String = line.Trim
+		        
+		        ' Check for comment line
+		        If trimmed.BeginsWith("'") Or trimmed.BeginsWith("//") Then
+		          hasComment = True
+		          Exit For
+		        End If
+		        
+		        ' If we hit actual code, stop looking
+		        If trimmed <> "" And Not trimmed.BeginsWith("'") And Not trimmed.BeginsWith("//") Then
+		          Exit For
+		        End If
+		      Next
+		      
+		      If hasComment Then
+		        methodsWithDocs = methodsWithDocs + 1
+		      End If
+		    End If
+		  Next
+		  
+		  If allMethods.Count > 0 Then
+		    score.DocumentationCoverage = (methodsWithDocs / allMethods.Count) * 100
+		    score.DocumentationScore = score.DocumentationCoverage
+		  Else
+		    score.DocumentationCoverage = 0
+		    score.DocumentationScore = 0
+		  End If
+		  
+		  ' ==============================================
+		  ' CALCULATE OVERALL SCORE (WEIGHTED)
+		  ' ==============================================
+		  score.OverallScore = _
+		  (score.ErrorHandlingScore * 0.30) + _
+		  (score.ComplexityScore * 0.25) + _
+		  (score.CodeReuseScore * 0.20) + _
+		  (score.ParameterScore * 0.15) + _
+		  (score.DocumentationScore * 0.10)
+		  
+		  ' Assign grade
+		  If score.OverallScore >= 90 Then
+		    score.Grade = "A+"
+		  ElseIf score.OverallScore >= 85 Then
+		    score.Grade = "A"
+		  ElseIf score.OverallScore >= 80 Then
+		    score.Grade = "A-"
+		  ElseIf score.OverallScore >= 75 Then
+		    score.Grade = "B+"
+		  ElseIf score.OverallScore >= 70 Then
+		    score.Grade = "B"
+		  ElseIf score.OverallScore >= 65 Then
+		    score.Grade = "B-"
+		  ElseIf score.OverallScore >= 60 Then
+		    score.Grade = "C+"
+		  ElseIf score.OverallScore >= 55 Then
+		    score.Grade = "C"
+		  ElseIf score.OverallScore >= 50 Then
+		    score.Grade = "C-"
+		  ElseIf score.OverallScore >= 45 Then
+		    score.Grade = "D+"
+		  ElseIf score.OverallScore >= 40 Then
+		    score.Grade = "D"
+		  Else
+		    score.Grade = "F"
+		  End If
+		  
+		  Return score
+		  
+		  
 		  
 		End Function
 	#tag EndMethod

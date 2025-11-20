@@ -119,12 +119,14 @@ Protected Class ReportGenerator
 
 	#tag Method, Flags = &h21
 		Private Function CalculatePDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
+		  // Private Function CalculatePDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
 		  // Calculate total height needed for the PDF
 		  
 		  Var unusedElements() As CodeElement = analyzer.GetUnusedElements()
 		  Var allMethods() As CodeElement = analyzer.GetMethodElements
 		  
 		  Var estimatedLines As Integer = 50  // Header + summary
+		  estimatedLines = estimatedLines + 40  // Quality score section ← ADD THIS
 		  estimatedLines = estimatedLines + (unusedElements.Count * 2)
 		  estimatedLines = estimatedLines + 40  // Error handling section
 		  estimatedLines = estimatedLines + 20  // Relationship section
@@ -145,6 +147,7 @@ Protected Class ReportGenerator
 		  estimatedLines = estimatedLines + relationshipCount
 		  
 		  Return CType(estimatedLines * lineHeight + (margin * 3), Integer)
+		  
 		End Function
 	#tag EndMethod
 
@@ -336,8 +339,7 @@ Protected Class ReportGenerator
 
 	#tag Method, Flags = &h0
 		Function GenerateAnalysisReportPDF(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
-		  // REFACTORED VERSION - Much cleaner!
-		  
+		  // Function GenerateAnalysisReportPDF(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  Try
 		    // Setup
 		    Var pageWidth As Integer = 612
@@ -357,6 +359,7 @@ Protected Class ReportGenerator
 		    
 		    // Render each section
 		    yPos = RenderHeader(g, pageWidth, margin, yPos)
+		    yPos = RenderQualityScore(g, analyzer, pageWidth, margin, lineHeight, yPos)  // ← ADD THIS
 		    yPos = RenderSummary(g, analyzer, margin, lineHeight, yPos)
 		    yPos = RenderUnusedElements(g, analyzer, margin, lineHeight, yPos)
 		    yPos = RenderErrorHandlingAnalysis(g, analyzer, margin, lineHeight, yPos)
@@ -374,6 +377,7 @@ Protected Class ReportGenerator
 		    System.DebugLog("Error generating PDF: " + e.Message)
 		    Return False
 		  End Try
+		  
 		End Function
 	#tag EndMethod
 
@@ -938,6 +942,162 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function RenderQualityScore(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  // Private Function RenderQualityScore(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  ' Render quality score section in PDF
+		  
+		  Var score As QualityScore = analyzer.CalculateQualityScore()
+		  
+		  yPos = yPos + 20
+		  
+		  ' Section header line
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawLine(margin, yPos, pageWidth - margin, yPos)
+		  yPos = yPos + 20
+		  
+		  ' Title
+		  g.FontSize = 16
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("CODE QUALITY SCORE", margin, yPos)
+		  yPos = yPos + 30
+		  
+		  ' Overall Score - Large and prominent
+		  g.FontSize = 48
+		  g.Bold = True
+		  g.DrawingColor = score.GetScoreColor()
+		  
+		  Var scoreText As String = score.OverallScore.ToString("0.0")
+		  Var scoreWidth As Double = g.TextWidth(scoreText)
+		  Var centerX As Double = pageWidth / 2
+		  g.DrawText(scoreText, centerX - (scoreWidth / 2), yPos)
+		  yPos = yPos + 50
+		  
+		  ' Grade
+		  g.FontSize = 24
+		  Var gradeText As String = "Grade: " + score.Grade
+		  Var gradeWidth As Double = g.TextWidth(gradeText)
+		  g.DrawText(gradeText, centerX - (gradeWidth / 2), yPos)
+		  yPos = yPos + 35
+		  
+		  ' Status message
+		  g.FontSize = 12
+		  g.Bold = False
+		  g.DrawingColor = Color.Black
+		  
+		  Var statusMsg As String
+		  If score.OverallScore >= 80 Then
+		    statusMsg = "EXCELLENT - Well-maintained codebase"
+		  ElseIf score.OverallScore >= 60 Then
+		    statusMsg = "GOOD - Minor improvements recommended"
+		  ElseIf score.OverallScore >= 40 Then
+		    statusMsg = "NEEDS WORK - Several issues to address"
+		  Else
+		    statusMsg = "CRITICAL - Immediate attention required"
+		  End If
+		  
+		  Var statusWidth As Double = g.TextWidth(statusMsg)
+		  g.DrawText(statusMsg, centerX - (statusWidth / 2), yPos)
+		  yPos = yPos + 30
+		  
+		  ' Component breakdown
+		  g.FontSize = 14
+		  g.Bold = True
+		  g.DrawingColor = Color.RGB(70, 70, 70)
+		  g.DrawText("Component Scores (Weighted)", margin, yPos)
+		  yPos = yPos + 25
+		  
+		  g.FontSize = 11
+		  g.Bold = False
+		  g.DrawingColor = Color.Black
+		  
+		  ' Error Handling
+		  yPos = RenderScoreBar(g, "Error Handling", score.ErrorHandlingScore, 30, _
+		  score.ErrorHandlingCoverage.ToString("0.0") + "% coverage", _
+		  pageWidth, margin, lineHeight, yPos)
+		  yPos = yPos + 5
+		  
+		  ' Complexity
+		  yPos = RenderScoreBar(g, "Complexity", score.ComplexityScore, 25, _
+		  "Avg: " + score.AverageComplexity.ToString("0.1"), _
+		  pageWidth, margin, lineHeight, yPos)
+		  yPos = yPos + 5
+		  
+		  ' Code Reuse
+		  yPos = RenderScoreBar(g, "Code Reuse", score.CodeReuseScore, 20, _
+		  score.UnusedPercentage.ToString("0.1") + "% unused", _
+		  pageWidth, margin, lineHeight, yPos)
+		  yPos = yPos + 5
+		  
+		  ' Parameters
+		  yPos = RenderScoreBar(g, "Parameters", score.ParameterScore, 15, _
+		  "Avg: " + score.AverageParameters.ToString("0.1"), _
+		  pageWidth, margin, lineHeight, yPos)
+		  yPos = yPos + 5
+		  
+		  ' Documentation
+		  yPos = RenderScoreBar(g, "Documentation", score.DocumentationScore, 10, _
+		  score.DocumentationCoverage.ToString("0.0") + "% coverage", _
+		  pageWidth, margin, lineHeight, yPos)
+		  yPos = yPos + 25
+		  
+		  ' Recommendations
+		  g.FontSize = 12
+		  g.Bold = True
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawText("Improvement Recommendations:", margin, yPos)
+		  yPos = yPos + 20
+		  
+		  g.FontSize = 10
+		  g.Bold = False
+		  g.DrawingColor = Color.Black
+		  
+		  Var hasRecommendations As Boolean = False
+		  
+		  If score.ErrorHandlingScore < 70 Then
+		    g.DrawText("• Add try/catch blocks to risky operations", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		    hasRecommendations = True
+		  End If
+		  
+		  If score.ComplexityScore < 70 Then
+		    g.DrawText("• Refactor complex methods to improve maintainability", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		    hasRecommendations = True
+		  End If
+		  
+		  If score.CodeReuseScore < 70 Then
+		    g.DrawText("• Remove unused code to reduce maintenance burden", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		    hasRecommendations = True
+		  End If
+		  
+		  If score.ParameterScore < 70 Then
+		    g.DrawText("• Reduce parameter counts using parameter objects", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		    hasRecommendations = True
+		  End If
+		  
+		  If score.DocumentationScore < 70 Then
+		    g.DrawText("• Add comments to explain complex logic", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		    hasRecommendations = True
+		  End If
+		  
+		  If Not hasRecommendations Then
+		    g.DrawingColor = Color.RGB(0, 150, 0)
+		    g.DrawText("✓ Excellent! No major improvements needed.", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		  End If
+		  
+		  yPos = yPos + 15
+		  
+		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function RenderRefactoringFooter(g As Graphics, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
 		  // Private Function RenderRefactoringFooter(g As Graphics, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
 		  // Separator line
@@ -1235,6 +1395,62 @@ Protected Class ReportGenerator
 		  Next
 		  
 		  Return yPos
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderScoreBar(g As Graphics, label As String, score As Double, weight As Integer, detail As String, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  //Private Function RenderScoreBar(g As Graphics, label As String, score As Double, weight As Integer, detail As String, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  ' Render a score bar with label and percentage
+		  
+		  Var barWidth As Double = 280  // Reduced from 300 to give more room
+		  Var barHeight As Double = 20
+		  Var barX As Double = margin + 150
+		  
+		  ' Label
+		  g.FontSize = 11
+		  g.Bold = False
+		  g.DrawingColor = Color.Black
+		  g.DrawText(label + " (" + weight.ToString + "%):", margin, yPos + 15)
+		  
+		  ' Score bar background
+		  g.DrawingColor = Color.RGB(220, 220, 220)
+		  g.FillRectangle(barX, yPos, barWidth, barHeight)
+		  
+		  ' Score bar fill (colored based on score)
+		  Var fillWidth As Double = (score / 100.0) * barWidth
+		  
+		  If score >= 80 Then
+		    g.DrawingColor = Color.RGB(0, 180, 0)  // Green
+		  ElseIf score >= 60 Then
+		    g.DrawingColor = Color.RGB(100, 180, 0)  // Yellow-green
+		  ElseIf score >= 40 Then
+		    g.DrawingColor = Color.RGB(255, 140, 0)  // Orange
+		  Else
+		    g.DrawingColor = Color.RGB(220, 50, 50)  // Red
+		  End If
+		  
+		  g.FillRectangle(barX, yPos, fillWidth, barHeight)
+		  
+		  ' Border
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawRectangle(barX, yPos, barWidth, barHeight)
+		  
+		  ' Score text (right aligned to bar)
+		  g.FontSize = 10
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  Var scoreText As String = score.ToString("0.0")
+		  g.DrawText(scoreText, barX + barWidth + 10, yPos + 15)
+		  
+		  ' Detail text on next line (moved down)
+		  g.FontSize = 9
+		  g.Bold = False
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawText(detail, barX + 10, yPos + barHeight + 12)  // ← MOVED TO NEW LINE
+		  
+		  Return yPos + barHeight + 18  // ← Adjusted spacing to account for detail line
+		  
 		End Function
 	#tag EndMethod
 

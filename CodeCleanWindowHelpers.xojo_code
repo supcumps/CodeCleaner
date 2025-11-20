@@ -1,6 +1,91 @@
 #tag Module
 Protected Module CodeCleanWindowHelpers
 	#tag Method, Flags = &h21
+		Private Function BuildQualityScoreSection(analyzer As ProjectAnalyzer) As String
+		  //Function BuildQualityScoreSection(analyzer As ProjectAnalyzer) As String
+		  ' Build the quality score section for text reports
+		  
+		  Var report As String = ""
+		  
+		  report = report + EndOfLine + "CODE QUALITY SCORE" + EndOfLine
+		  report = report + "==================" + EndOfLine + EndOfLine
+		  
+		  Var score As QualityScore = analyzer.CalculateQualityScore()
+		  
+		  ' Overall score with emoji
+		  report = report + score.GetScoreEmoji() + " OVERALL SCORE: " + score.OverallScore.ToString("0.0") + "/100"
+		  report = report + "  (Grade: " + score.Grade + ")" + EndOfLine + EndOfLine
+		  
+		  ' Score interpretation
+		  If score.OverallScore >= 80 Then
+		    report = report + "Status: EXCELLENT - Well-maintained codebase" + EndOfLine
+		  ElseIf score.OverallScore >= 60 Then
+		    report = report + "Status: GOOD - Minor improvements recommended" + EndOfLine
+		  ElseIf score.OverallScore >= 40 Then
+		    report = report + "Status: NEEDS WORK - Several issues to address" + EndOfLine
+		  Else
+		    report = report + "Status: CRITICAL - Immediate attention required" + EndOfLine
+		  End If
+		  
+		  report = report + EndOfLine + "Component Scores (Weighted):" + EndOfLine
+		  report = report + "----------------------------" + EndOfLine
+		  
+		  ' Error Handling (30%)
+		  report = report + "Error Handling:  " + score.ErrorHandlingScore.ToString("0.0") + "/100 (Weight: 30%)" + EndOfLine
+		  report = report + "  Coverage: " + score.ErrorHandlingCoverage.ToString("0.0") + "% of risky operations protected" + EndOfLine
+		  
+		  ' Complexity (25%)
+		  report = report + "Complexity:      " + score.ComplexityScore.ToString("0.0") + "/100 (Weight: 25%)" + EndOfLine
+		  report = report + "  Average: " + score.AverageComplexity.ToString("0.1") + " (Lower is better)" + EndOfLine
+		  
+		  ' Code Reuse (20%)
+		  report = report + "Code Reuse:      " + score.CodeReuseScore.ToString("0.0") + "/100 (Weight: 20%)" + EndOfLine
+		  report = report + "  Unused: " + score.UnusedPercentage.ToString("0.1") + "% of code elements" + EndOfLine
+		  
+		  ' Parameters (15%)
+		  report = report + "Parameters:      " + score.ParameterScore.ToString("0.0") + "/100 (Weight: 15%)" + EndOfLine
+		  report = report + "  Average: " + score.AverageParameters.ToString("0.1") + " params per method" + EndOfLine
+		  
+		  ' Documentation (10%)
+		  report = report + "Documentation:   " + score.DocumentationScore.ToString("0.0") + "/100 (Weight: 10%)" + EndOfLine
+		  report = report + "  Coverage: " + score.DocumentationCoverage.ToString("0.0") + "% of methods documented" + EndOfLine
+		  
+		  report = report + EndOfLine + "Improvement Recommendations:" + EndOfLine
+		  report = report + "----------------------------" + EndOfLine
+		  
+		  ' Provide specific recommendations based on weak areas
+		  If score.ErrorHandlingScore < 70 Then
+		    report = report + "⚠️  Add try/catch blocks to risky operations (database, file I/O, network)" + EndOfLine
+		  End If
+		  
+		  If score.ComplexityScore < 70 Then
+		    report = report + "⚠️  Refactor complex methods to improve maintainability" + EndOfLine
+		  End If
+		  
+		  If score.CodeReuseScore < 70 Then
+		    report = report + "⚠️  Remove unused code to reduce maintenance burden" + EndOfLine
+		  End If
+		  
+		  If score.ParameterScore < 70 Then
+		    report = report + "⚠️  Reduce parameter counts using parameter objects or builder pattern" + EndOfLine
+		  End If
+		  
+		  If score.DocumentationScore < 70 Then
+		    report = report + "⚠️  Add comments to explain complex logic and method purposes" + EndOfLine
+		  End If
+		  
+		  If score.OverallScore >= 80 Then
+		    report = report + "✅ Great work! Continue maintaining these standards." + EndOfLine
+		  End If
+		  
+		  report = report + EndOfLine
+		  
+		  Return report
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function BuildRefactoringSuggestionsSection(proj As ProjectAnalyzer) As String
 		  // Function BuildRefactoringSuggestionsSection(proj As ProjectAnalyzer) As String
 		  Var report As String = ""
@@ -296,21 +381,22 @@ Protected Module CodeCleanWindowHelpers
 
 	#tag Method, Flags = &h0
 		Sub GenerateTextReport(Extends win As CodeCleanWindow)
-		  // GenerateTextReport(Extends win As CodeCleanWindow)
+		  //Function GenerateTextReport(Extends win As CodeCleanWindow)
 		  If win.mAnalyzer = Nil Then Return
 		  
 		  Var output As String = ""
 		  
 		  // Build each section
 		  output = output + BuildReportHeader()
+		  output = output + BuildQualityScoreSection(win.mAnalyzer)  // ← ADD THIS LINE
 		  output = output + BuildStatisticsSection(win.mAnalyzer)
 		  output = output + BuildUnusedElementsSection(win.mAnalyzer)
 		  output = output + BuildRelationshipSection(win.mAnalyzer)
-		  
 		  output = output + BuildRefactoringSuggestionsSection(win.mAnalyzer)
 		  output = output + BuildReportFooter()
 		  
 		  win.txtResults.Text = output
+		  
 		End Sub
 	#tag EndMethod
 
