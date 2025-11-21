@@ -120,61 +120,35 @@ Protected Class ReportGenerator
 	#tag Method, Flags = &h21
 		Private Function CalculatePDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
 		  // Private Function CalculatePDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
-		  // Calculate total height needed for the PDF
+		  ' More conservative height calculation
 		  
-		  Var unusedElements() As CodeElement = analyzer.GetUnusedElements()
-		  Var allMethods() As CodeElement = analyzer.GetMethodElements
-		  
-		  Var estimatedLines As Integer = 50  // Header + summary
-		  estimatedLines = estimatedLines + 40  // Quality score section
-		  estimatedLines = estimatedLines + 30  // Code smells section 
-		  
-		  // Calculate code smell lines
 		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
-		  estimatedLines = estimatedLines + 30  // Section header and summary
+		  Var stats As Dictionary = analyzer.GetErrorHandlingStats()
+		  Var riskyCount As Integer = 0
 		  
-		  Var criticalHigh As Integer = 0
-		  For Each smell As CodeSmell In smells
-		    estimatedLines = estimatedLines + 8  // Each smell takes ~8 lines
-		    
-		    // Add extra for wrapped text
-		    If smell.Description.Length > 80 Then
-		      estimatedLines = estimatedLines + 2
-		    End If
-		    
-		    If smell.Details.Length > 80 Then
-		      estimatedLines = estimatedLines + 2
-		    End If
-		    
-		    If smell.Recommendation.Length > 80 Then
-		      estimatedLines = estimatedLines + 2
-		    End If
-		  Next
-		  If criticalHigh > 10 Then
-		    criticalHigh = 10  // Limit display
+		  If stats.HasKey("riskyMethods") Then
+		    Var riskyMethods() As CodeElement = stats.Value("riskyMethods")
+		    riskyCount = riskyMethods.Count
 		  End If
-		  estimatedLines = estimatedLines + (criticalHigh * 6)  // 6 lines per smell
 		  
-		  estimatedLines = estimatedLines + (unusedElements.Count * 2)
-		  estimatedLines = estimatedLines + 40  // Error handling section
-		  estimatedLines = estimatedLines + 20  // Relationship section
-		  estimatedLines = estimatedLines + 50  // Complexity section (including parameter stats)
-		  estimatedLines = estimatedLines + 25  // Parameter complexity details
-		  estimatedLines = estimatedLines + 30  // Most complex methods
+		  // REDUCED estimates per item
+		  Var estimatedHeight As Integer = 2500  // Base sections (reduced from 3000)
+		  estimatedHeight = estimatedHeight + (smells.Count * 100)  // 100 pixels per smell (reduced from 150)
+		  estimatedHeight = estimatedHeight + (riskyCount * 80)  // 80 pixels per method (reduced from 100)
 		  
-		  // Count relationship lines
-		  Var relationshipCount As Integer = 0
-		  For Each element As CodeElement In allMethods
-		    If element.CallsTo.Count > 0 Then
-		      relationshipCount = relationshipCount + element.CallsTo.Count
-		    End If
-		  Next
-		  If relationshipCount > 15 Then
-		    relationshipCount = 15
-		  End If
-		  estimatedLines = estimatedLines + relationshipCount
+		  // Add 20% buffer
+		  estimatedHeight = Round(estimatedHeight * 1.2)
 		  
-		  Return CType(estimatedLines * lineHeight + (margin * 3), Integer)
+		  // Bounds
+		  If estimatedHeight < 5000 Then estimatedHeight = 5000
+		  If estimatedHeight > 18000 Then estimatedHeight = 18000  // Even lower max
+		  
+		  System.DebugLog("=== PDF HEIGHT CALCULATION ===")
+		  System.DebugLog("Code Smells: " + str(smells.Count)+ " × 100 = " + Str(smells.Count * 100) )
+		  System.DebugLog("Risky Methods: " + Str(riskyCount) + " × 80 = " + Str(riskyCount * 80))
+		  System.DebugLog("FINAL HEIGHT: " + estimatedHeight.ToString + " pixels")
+		  
+		  Return estimatedHeight
 		  
 		End Function
 	#tag EndMethod
@@ -371,7 +345,7 @@ Protected Class ReportGenerator
 		  Try
 		    // Setup
 		    Var pageWidth As Integer = 612
-		    Var margin As Double = 50
+		    Var margin As Double = 100
 		    Var lineHeight As Double = 14
 		    
 		    // Calculate height and create PDF
@@ -388,7 +362,7 @@ Protected Class ReportGenerator
 		    // Render each section
 		    yPos = RenderHeader(g, pageWidth, margin, yPos)
 		    yPos = RenderQualityScore(g, analyzer, pageWidth, margin, lineHeight, yPos)  
-		    yPos = RenderCodeSmells(g, analyzer, pageWidth, margin, lineHeight, yPos)  // ← ADD THIS
+		    yPos = RenderCodeSmells(g, analyzer, pageWidth, margin, lineHeight, yPos)
 		    yPos = RenderSummary(g, analyzer, margin, lineHeight, yPos)
 		    yPos = RenderUnusedElements(g, analyzer, margin, lineHeight, yPos)
 		    yPos = RenderErrorHandlingAnalysis(g, analyzer, margin, lineHeight, yPos)
@@ -826,192 +800,199 @@ Protected Class ReportGenerator
 
 	#tag Method, Flags = &h21
 		Private Function RenderErrorHandlingAnalysis(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Render error handling analysis section
+		  // Private Function RenderErrorHandlingAnalysis(g As Graphics, analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		  ' Render complete error handling analysis with ALL methods
 		  
+		  yPos = yPos + 20
+		  
+		  ' Section header line
+		  g.DrawingColor = Color.RGB(100, 100, 100)
+		  g.DrawLine(margin, yPos, margin + 400, yPos)
+		  yPos = yPos + 20
+		  
+		  ' Title
+		  g.FontSize = 16
+		  g.Bold = True
+		  g.DrawingColor = Color.RGB(200, 50, 50)
+		  g.DrawText("[!] ERROR HANDLING ANALYSIS", margin, yPos)
+		  yPos = yPos + lineHeight + 15
+		  
+		  ' Get error handling stats
 		  Var stats As Dictionary = analyzer.GetErrorHandlingStats()
 		  
-		  yPos = yPos + 20
+		  Var totalMethods As Integer = 0
+		  Var methodsWithTryCatch As Integer = 0
+		  Var coveragePercent As Integer = 0
+		  Var riskyMethods() As CodeElement
+		  Var highRiskCount As Integer = 0
+		  Var mediumRiskCount As Integer = 0
 		  
-		  // Section header
-		  g.DrawingColor = Color.RGB(100, 100, 100)
-		  g.DrawLine(margin, yPos, 612 - margin, yPos)
-		  yPos = yPos + 20
+		  If stats.HasKey("totalMethods") Then
+		    totalMethods = stats.Value("totalMethods")
+		  End If
 		  
-		  g.FontSize = 14
-		  g.Bold = True
-		  g.DrawingColor = Color.RGB(200, 0, 0)
-		  g.DrawText("ERROR HANDLING ANALYSIS", margin, yPos)  
-		  yPos = yPos + 25
+		  If stats.HasKey("methodsWithTryCatch") Then
+		    methodsWithTryCatch = stats.Value("methodsWithTryCatch")
+		  End If
 		  
-		  // Statistics
+		  If stats.HasKey("coveragePercent") Then
+		    coveragePercent = stats.Value("coveragePercent")
+		  End If
+		  
+		  If stats.HasKey("riskyMethods") Then
+		    riskyMethods = stats.Value("riskyMethods")
+		  End If
+		  
+		  If stats.HasKey("highRiskCount") Then
+		    highRiskCount = stats.Value("highRiskCount")
+		  End If
+		  
+		  If stats.HasKey("mediumRiskCount") Then
+		    mediumRiskCount = stats.Value("mediumRiskCount")
+		  End If
+		  
+		  ' Separate methods by highest risk level
+		  Var highRiskMethods() As CodeElement
+		  Var mediumRiskMethods() As CodeElement
+		  
+		  For Each method As CodeElement In riskyMethods
+		    Var hasHighRisk As Boolean = False
+		    
+		    For Each pattern As ErrorPattern In method.RiskyPatterns
+		      If pattern.RiskLevel = "HIGH" Then
+		        hasHighRisk = True
+		        Exit For
+		      End If
+		    Next
+		    
+		    If hasHighRisk Then
+		      highRiskMethods.Add(method)
+		    Else
+		      mediumRiskMethods.Add(method)
+		    End If
+		  Next
+		  
+		  ' Summary stats
 		  g.FontSize = 12
 		  g.Bold = False
 		  g.DrawingColor = Color.Black
 		  
-		  Var totalMethods As Integer = stats.Value("totalMethods")
-		  Var methodsWithTryCatch As Integer = stats.Value("methodsWithTryCatch")
-		  Var coveragePercent As Integer = stats.Value("coveragePercent")
-		  Var highRiskCount As Integer = stats.Value("highRiskCount")
-		  Var mediumRiskCount As Integer = stats.Value("mediumRiskCount")
-		  Var methodsWithRiskyPatterns As Integer = stats.Value("methodsWithRiskyPatterns")
-		  
 		  g.DrawText("Total Methods Analyzed: " + totalMethods.ToString, margin, yPos)
-		  yPos = yPos + lineHeight
+		  yPos = yPos + lineHeight + 3
 		  
 		  g.DrawText("Methods with Try/Catch: " + methodsWithTryCatch.ToString, margin, yPos)
-		  yPos = yPos + lineHeight
+		  yPos = yPos + lineHeight + 3
 		  
-		  // Coverage with color coding
 		  g.DrawText("Error Handling Coverage: " + coveragePercent.ToString + "%", margin, yPos)
-		  If coveragePercent < 30 Then
-		    g.DrawingColor = Color.RGB(200, 0, 0)  // Red for poor coverage
-		  ElseIf coveragePercent < 70 Then
-		    g.DrawingColor = Color.RGB(255, 140, 0)  // Orange for moderate coverage
-		  Else
-		    g.DrawingColor = Color.RGB(0, 150, 0)  // Green for good coverage
-		  End If
-		  Var barWidth As Integer = coveragePercent * 2
-		  g.FillRectangle(margin + 200, yPos - 10, barWidth, 10)
-		  g.DrawingColor = Color.Black
-		  yPos = yPos + lineHeight + 5
+		  yPos = yPos + lineHeight + 3
 		  
-		  yPos = yPos + 10
-		  g.DrawText("Methods Without Error Handling: " + methodsWithRiskyPatterns.ToString, margin, yPos)
-		  yPos = yPos + lineHeight
+		  g.DrawText("Methods Without Error Handling: " + riskyMethods.Count.ToString, margin, yPos)
+		  yPos = yPos + lineHeight + 10
 		  
-		  g.DrawingColor = Color.RGB(200, 0, 0)
-		  g.DrawText("HIGH Risk Issues: " + highRiskCount.ToString, margin + 20, yPos)
-		  yPos = yPos + lineHeight
+		  ' Risk breakdown
+		  g.FontSize = 11
 		  
-		  g.DrawingColor = Color.RGB(255, 140, 0)
-		  g.DrawText("MEDIUM Risk Issues: " + mediumRiskCount.ToString, margin + 20, yPos)
-		  yPos = yPos + lineHeight + 5
-		  
-		  // High-risk methods list
-		  If methodsWithRiskyPatterns > 0 Then
-		    yPos = yPos + 10
-		    g.FontSize = 13
-		    g.Bold = True
+		  If highRiskMethods.Count > 0 Then
 		    g.DrawingColor = Color.RGB(200, 0, 0)
-		    g.DrawText("HIGH RISK METHODS (Need Immediate Attention)", margin, yPos)
-		    yPos = yPos + 20
-		    
-		    g.FontSize = 10
-		    g.Bold = False
-		    
-		    Var riskyMethods() As CodeElement = stats.Value("riskyMethods")
-		    Var displayCount As Integer = 0
-		    
-		    For Each element As CodeElement In riskyMethods
-		      If displayCount >= 15 Then  // Limit to 15 for space
-		        Exit For element
-		      End If
-		      
-		      For Each pattern As ErrorPattern In element.RiskyPatterns
-		        If displayCount >= 15 Then
-		          Exit For element
-		        End If
-		        
-		        // Color code by risk level
-		        If pattern.RiskLevel = "HIGH" Then
-		          g.DrawingColor = Color.RGB(200, 0, 0)
-		        Else
-		          g.DrawingColor = Color.RGB(255, 140, 0)
-		        End If
-		        
-		        Var riskIcon As String = If(pattern.RiskLevel = "HIGH", "⚠", "⚡")
-		        g.DrawText("  " + riskIcon + " " + element.FullPath, margin + 10, yPos)
-		        yPos = yPos + lineHeight
-		        
-		        g.DrawingColor = Color.RGB(100, 100, 100)
-		        g.FontSize = 9
-		        g.DrawText("    " + pattern.Description, margin + 20, yPos)
-		        yPos = yPos + lineHeight + 3
-		        
-		        g.FontSize = 10
-		        displayCount = displayCount + 1
-		      Next
-		    Next
-		    
-		    If riskyMethods.Count > 15 Then
-		      yPos = yPos + 5
-		      g.DrawingColor = Color.RGB(100, 100, 100)
-		      g.FontSize = 9
-		      Var remaining As Integer = riskyMethods.Count - 15
-		      g.DrawText("  ... and " + remaining.ToString + " more methods need error handling", margin + 10, yPos)
-		      yPos = yPos + lineHeight
-		    End If
-		  Else
-		    yPos = yPos + 10
-		    g.FontSize = 12
-		    g.DrawingColor = Color.RGB(0, 150, 0)
-		    g.DrawText("All risky operations have error handling!", margin, yPos)
-		    yPos = yPos + lineHeight
+		    g.DrawText("  • HIGH Risk Issues: " + highRiskMethods.Count.ToString, margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
+		  End If
+		  
+		  If mediumRiskMethods.Count > 0 Then
+		    g.DrawingColor = Color.RGB(220, 140, 0)
+		    g.DrawText("  • MEDIUM Risk Issues: " + mediumRiskMethods.Count.ToString, margin + 20, yPos)
+		    yPos = yPos + lineHeight + 3
 		  End If
 		  
 		  yPos = yPos + 20
 		  
-		  
-		  
 		  ' ========================================
-		  ' COMPLETE LIST - ALL METHODS
+		  ' HIGH RISK METHODS - ALL WITH DETAILS
 		  ' ========================================
-		  g.FontSize = 12
-		  g.Bold = True
-		  g.DrawingColor = Color.RGB(70, 70, 70)
-		  g.DrawText("Complete List - All Methods Needing Error Handling", margin, yPos)
-		  yPos = yPos + lineHeight + 10
-		  
-		  ' Get error handling stats
-		  stats  = analyzer.GetErrorHandlingStats()
-		  Var highRiskMethods() As CodeElement
-		  Var mediumRiskMethods() As CodeElement
-		  
-		  If stats.HasKey("highRisk") Then
-		    highRiskMethods = stats.Value("highRisk")
-		  End If
-		  
-		  If stats.HasKey("mediumRisk") Then
-		    mediumRiskMethods = stats.Value("mediumRisk")
-		  End If
-		  
-		  ' Show all high risk
 		  If highRiskMethods.Count > 0 Then
-		    g.FontSize = 10
+		    g.FontSize = 14
 		    g.Bold = True
 		    g.DrawingColor = Color.RGB(200, 0, 0)
-		    g.DrawText("HIGH RISK (" + highRiskMethods.Count.ToString + "):", margin + 10, yPos)
-		    yPos = yPos + lineHeight + 5
+		    g.DrawText("[!!] HIGH RISK METHODS - All " + highRiskMethods.Count.ToString + " Items", margin, yPos)
+		    yPos = yPos + lineHeight + 10
 		    
-		    g.FontSize = 9
+		    g.FontSize = 10
 		    g.Bold = False
 		    
 		    For Each method As CodeElement In highRiskMethods
-		      g.DrawText("method.FullPath, margin + 15, yPos)
-		      yPos = yPos + lineHeight
+		      ' Method name in red
+		      g.DrawingColor = Color.RGB(150, 0, 0)
+		      g.Bold = True
+		      g.DrawText(" [!] " + method.FullPath, margin + 20, yPos)
+		      yPos = yPos + lineHeight + 2
+		      
+		      ' Show all risky patterns for this method
+		      g.FontSize = 9
+		      g.Bold = False
+		      g.DrawingColor = Color.RGB(100, 100, 100)
+		      
+		      For Each pattern As ErrorPattern In method.RiskyPatterns
+		        If pattern.RiskLevel = "HIGH" Then
+		          g.DrawText("   " + pattern.Description, margin + 25, yPos)
+		          yPos = yPos + lineHeight + 2
+		        End If
+		      Next
+		      
+		      yPos = yPos + 6
+		      g.FontSize = 10
 		    Next
-		    yPos = yPos + 5
+		    
+		    yPos = yPos + 10
 		  End If
 		  
-		  ' Show all medium risk
+		  ' ========================================
+		  ' MEDIUM RISK METHODS - ALL WITH DETAILS
+		  ' ========================================
 		  If mediumRiskMethods.Count > 0 Then
-		    g.FontSize = 10
+		    g.FontSize = 14
 		    g.Bold = True
 		    g.DrawingColor = Color.RGB(220, 140, 0)
-		    g.DrawText("MEDIUM RISK (" + mediumRiskMethods.Count.ToString + "):", margin + 10, yPos)
-		    yPos = yPos + lineHeight + 5
+		    g.DrawText("[!] MEDIUM RISK METHODS - All " + mediumRiskMethods.Count.ToString + " Items", margin, yPos)
+		    yPos = yPos + lineHeight + 10
 		    
-		    g.FontSize = 9
+		    g.FontSize = 10
 		    g.Bold = False
 		    
 		    For Each method As CodeElement In mediumRiskMethods
-		      g.DrawText(" [!) " + method.FullPath, margin + 15, yPos)
-		      yPos = yPos + lineHeight
+		      ' Method name in orange
+		      g.DrawingColor = Color.RGB(180, 100, 0)
+		      g.Bold = True
+		      g.DrawText(" [!] " + method.FullPath, margin + 20, yPos)
+		      yPos = yPos + lineHeight + 2
+		      
+		      ' Show all risky patterns for this method
+		      g.FontSize = 9
+		      g.Bold = False
+		      g.DrawingColor = Color.RGB(100, 100, 100)
+		      
+		      For Each pattern As ErrorPattern In method.RiskyPatterns
+		        g.DrawText("   " + pattern.Description, margin + 25, yPos)
+		        yPos = yPos + lineHeight + 2
+		      Next
+		      
+		      yPos = yPos + 6
+		      g.FontSize = 10
 		    Next
-		    yPos = yPos + 5
+		    
+		    yPos = yPos + 10
+		  End If
+		  
+		  ' Success message if no issues
+		  If riskyMethods.Count = 0 Then
+		    g.FontSize = 12
+		    g.Bold = False
+		    g.DrawingColor = Color.RGB(0, 150, 0)
+		    g.DrawText("[OK] All methods have appropriate error handling!", margin + 20, yPos)
+		    yPos = yPos + lineHeight + 20
 		  End If
 		  
 		  Return yPos
+		  
 		End Function
 	#tag EndMethod
 
@@ -1243,7 +1224,7 @@ Protected Class ReportGenerator
 		  g.Bold = True
 		  g.DrawingColor = Color.Black
 		  g.DrawText("CODE QUALITY SCORE", margin, yPos)
-		  yPos = yPos + 30
+		  yPos = yPos + 50
 		  
 		  ' Overall Score - Large and prominent
 		  g.FontSize = 48

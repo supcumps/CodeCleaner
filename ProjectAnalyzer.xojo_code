@@ -1652,6 +1652,7 @@ Protected Class ProjectAnalyzer
 
 	#tag Method, Flags = &h0
 		Function GetErrorHandlingStats() As Dictionary
+		  // GetErrorHandlingStats() As Dicgtionary
 		  // Calculate error handling statistics
 		  
 		  Var stats As New Dictionary
