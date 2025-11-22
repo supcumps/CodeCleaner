@@ -1579,29 +1579,48 @@ Protected Class ProjectAnalyzer
 
 	#tag Method, Flags = &h21
 		Private Sub FinalizeMethod(context As ParsingContext)
-		  // Private Sub FinalizeMethod(context As ParsingContext)
-		  // Save the accumulated code to the method element
+		  //Private Sub FinalizeMethod(context As ParsingContext)
+		  System.DebugLog("=== FinalizeMethod Called ===")
+		  System.DebugLog("  InMethodOrFunction: " + context.InMethodOrFunction.ToString)
+		  System.DebugLog("  CurrentMethodFullPath: " + context.CurrentMethodFullPath)
 		  
-		  If Not context.InMethodOrFunction Then
-		    Return
-		  End If
-		  
-		  If context.CurrentMethodFullPath = "" Then
-		    Return
-		  End If
-		  
-		  // Find the method element and store its code
-		  For Each element As CodeElement In mElements
-		    If element.FullPath = context.CurrentMethodFullPath And element.ElementType = "METHOD" Then
-		      element.Code = context.CurrentMethodCode.Trim
-		      Exit
+		  If context.InMethodOrFunction And context.CurrentMethodFullPath <> "" Then
+		    System.DebugLog("  Looking for element: " + context.CurrentMethodFullPath)
+		    
+		    // Find the element in mElements
+		    Var element As CodeElement = FindElementByFullPath(context.CurrentMethodFullPath)
+		    
+		    If element <> Nil Then
+		      System.DebugLog("  Element FOUND!")
+		      
+		      // Store the accumulated code
+		      element.Code = context.CurrentMethodCode
+		      
+		      System.DebugLog("  Code length: " + context.CurrentMethodCode.Length.ToString)
+		      System.DebugLog("  Code lines: " + context.CurrentMethodCode.CountFields(EndOfLine).ToString)
+		      
+		      // Calculate lines of code
+		      element.LinesOfCode = element.Code.CountFields(EndOfLine)
+		      
+		      System.DebugLog("  LOC set to: " + element.LinesOfCode.ToString)
+		      
+		      // NOW calculate complexity (after code is accumulated)
+		      element.CyclomaticComplexity = CalculateMethodComplexity(element)
+		      
+		      System.DebugLog("  Complexity calculated: " + element.CyclomaticComplexity.ToString)
+		      
+		      // Reset context
+		      context.InMethodOrFunction = False
+		      context.CurrentMethodFullPath = ""
+		      context.CurrentMethodCode = ""
+		    Else
+		      System.DebugLog("  ERROR: Element NOT FOUND!")
 		    End If
-		  Next
+		  Else
+		    System.DebugLog("  Skipped - not in method or no path")
+		  End If
 		  
-		  // Reset tracking
-		  context.InMethodOrFunction = False
-		  context.CurrentMethodFullPath = ""
-		  context.CurrentMethodCode = ""
+		  System.DebugLog("=== End FinalizeMethod ===")
 		  
 		End Sub
 	#tag EndMethod
@@ -2153,8 +2172,8 @@ Protected Class ProjectAnalyzer
 
 	#tag Method, Flags = &h21
 		Private Sub ProcessMethodDeclaration(declaration As String, context As ParsingContext)
-		  //Private Sub ProcessMethodDeclaration(declaration As String, context As ParsingContext)
-		  // Handle method/function declarations
+		  // Private Sub ProcessMethodDeclaration(declaration As String, context As ParsingContext)
+		  System.DebugLog(">>> ProcessMethodDeclaration CALLED with: " + declaration)
 		  
 		  // Finalize any previous method that was still open
 		  If context.InMethodOrFunction Then
@@ -2162,19 +2181,26 @@ Protected Class ProjectAnalyzer
 		  End If
 		  
 		  Var methodName As String = ExtractMethodName(declaration)
+		  System.DebugLog(">>> Method name extracted: " + methodName)
+		  
 		  Var fullPath As String = BuildFullPath(context.CurrentModule, context.CurrentClass, methodName)
+		  System.DebugLog(">>> Full path: " + fullPath)
 		  
 		  Var element As New CodeElement("METHOD", methodName, fullPath, context.FileName)
 		  
 		  // Extract parameter information from the signature
 		  ExtractParameterInfo(declaration, element)
 		  
+		  // ADD TO BOTH THE ARRAY AND THE DICTIONARY:
 		  mElements.Add(element)
+		  ElementLookup.Value(fullPath) = element  // ← ADD THIS LINE!
 		  
 		  // Start tracking this method
 		  context.InMethodOrFunction = True
 		  context.CurrentMethodFullPath = fullPath
 		  context.CurrentMethodCode = ""
+		  
+		  System.DebugLog(">>> Method declaration processed successfully")
 		  
 		End Sub
 	#tag EndMethod

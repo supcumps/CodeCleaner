@@ -790,21 +790,33 @@ End
 #tag Events GenerateHotSpotsPDFButton
 	#tag Event
 		Sub Pressed()
-		  // Button: GenerateHotSpotsPDFButton
-		  
-		  // Sub GenerateHotSpotsPDFButton_Pressed()
+		  //Sub GenerateHotSpotsPDFButton_Pressed()
 		  If mAnalyzer = Nil Then
 		    MessageBox("Please scan a project first")
 		    Return
 		  End If
 		  
-		  // Get method elements - use GetMethodElements() like the working button
 		  Var elements() As CodeElement = mAnalyzer.GetMethodElements()
 		  
 		  If elements.Count = 0 Then
 		    MessageBox("No methods found in the scanned project")
 		    Return
 		  End If
+		  
+		  // DEBUG: Check complexity values
+		  System.DebugLog("=== Checking Complexity Values ===")
+		  For i As Integer = 0 To Min(4, elements.LastIndex)
+		    Var element As CodeElement = elements(i)
+		    System.DebugLog("Method: " + element.FullPath)
+		    System.DebugLog("  Complexity: " + element.CyclomaticComplexity.ToString)
+		    System.DebugLog("  LOC: " + element.LinesOfCode.ToString)
+		    System.DebugLog("  Params: " + element.ParameterCount.ToString)
+		  Next
+		  System.DebugLog("=== End Debug ===")
+		  
+		  
+		  
+		  
 		  
 		  // Generate hot spots
 		  Var hotSpots() As HotSpot = HotSpotsGenerator.GenerateHotSpots(elements)
