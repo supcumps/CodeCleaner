@@ -385,6 +385,171 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Sub GenerateHotSpotsReportPDF(hotSpots() As HotSpot, savePath As String, projectName As String)
+		  // Public Sub GenerateHotSpotsReportPDF(hotSpots() As HotSpot, savePath As String, projectName As String)
+		  Try
+		    // We'll create all content on one very long page for now
+		    // Calculate required height
+		    Var estimatedHeight As Double = 300 + (hotSpots.Count * 100)
+		    
+		    Var pdf As New PDFDocument
+		    pdf.PageHeight = estimatedHeight  // Make page tall enough for all content
+		    pdf.PageWidth = 612
+		    
+		    Var currentY As Double = 50
+		    Var margin As Double = 50
+		    Var contentWidth As Double = 512
+		    
+		    Var g As Graphics = pdf.Graphics
+		    
+		    // Title
+		    g.FontName = "Helvetica-Bold"
+		    g.FontSize = 24
+		    g.DrawingColor = Color.RGB(220, 50, 50)
+		    g.DrawText("Hot Spots Report - Complete Analysis", margin, currentY)
+		    
+		    currentY = currentY + 30
+		    
+		    // Project info
+		    g.FontName = "Helvetica"
+		    g.FontSize = 12
+		    g.DrawingColor = Color.Black
+		    g.DrawText("Project: " + projectName, margin, currentY)
+		    currentY = currentY + 15
+		    g.DrawText("Generated: " + DateTime.Now.ToString, margin, currentY)
+		    currentY = currentY + 15
+		    g.DrawText("Total Hot Spots Found: " + hotSpots.Count.ToString, margin, currentY)
+		    currentY = currentY + 30
+		    
+		    // Summary statistics
+		    Var critical As Integer = 0
+		    Var high As Integer = 0
+		    Var medium As Integer = 0
+		    Var low As Integer = 0
+		    
+		    For i As Integer = 0 To hotSpots.LastIndex
+		      Var hs As HotSpot = hotSpots(i)
+		      Select Case hs.RiskLevel
+		      Case "CRITICAL"
+		        critical = critical + 1
+		      Case "HIGH"
+		        high = high + 1
+		      Case "MEDIUM"
+		        medium = medium + 1
+		      Case "LOW"
+		        low = low + 1
+		      End Select
+		    Next
+		    
+		    // Risk level summary box
+		    g.DrawingColor = Color.RGB(240, 240, 240)
+		    g.FillRectangle(margin, currentY, contentWidth, 80)
+		    g.DrawingColor = Color.Black
+		    g.DrawRectangle(margin, currentY, contentWidth, 80)
+		    
+		    currentY = currentY + 20
+		    g.FontName = "Helvetica-Bold"
+		    g.FontSize = 14
+		    g.DrawText("Risk Level Summary", margin + 10, currentY)
+		    currentY = currentY + 20
+		    
+		    g.FontName = "Helvetica"
+		    g.FontSize = 11
+		    
+		    g.DrawingColor = Color.RGB(200, 0, 0)
+		    g.DrawText("CRITICAL: " + critical.ToString, margin + 10, currentY)
+		    
+		    g.DrawingColor = Color.RGB(255, 100, 0)
+		    g.DrawText("HIGH: " + high.ToString, margin + 150, currentY)
+		    currentY = currentY + 18
+		    
+		    g.DrawingColor = Color.RGB(255, 165, 0)
+		    g.DrawText("MEDIUM: " + medium.ToString, margin + 10, currentY)
+		    
+		    g.DrawingColor = Color.RGB(100, 100, 100)
+		    g.DrawText("LOW: " + low.ToString, margin + 150, currentY)
+		    currentY = currentY + 40
+		    
+		    // Hot spots listing - ALL OF THEM
+		    g.DrawingColor = Color.Black
+		    g.FontName = "Helvetica-Bold"
+		    g.FontSize = 16
+		    g.DrawText("All Hot Spots (Complete List)", margin, currentY)
+		    currentY = currentY + 25
+		    
+		    // Show ALL hot spots
+		    For i As Integer = 0 To hotSpots.LastIndex
+		      Var hs As HotSpot = hotSpots(i)
+		      
+		      // Hot spot header
+		      g.FontName = "Helvetica-Bold"
+		      g.FontSize = 12
+		      
+		      // Color code by risk level
+		      Select Case hs.RiskLevel
+		      Case "CRITICAL"
+		        g.DrawingColor = Color.RGB(200, 0, 0)
+		      Case "HIGH"
+		        g.DrawingColor = Color.RGB(255, 100, 0)
+		      Case "MEDIUM"
+		        g.DrawingColor = Color.RGB(255, 165, 0)
+		      Case "LOW"
+		        g.DrawingColor = Color.RGB(100, 100, 100)
+		      End Select
+		      
+		      Var hotSpotNum As Integer = i + 1
+		      Var hotSpotTitle As String = hotSpotNum.ToString + ". " + hs.RiskLevel
+		      hotSpotTitle = hotSpotTitle + " - Score: " + hs.HotSpotScore.ToString
+		      g.DrawText(hotSpotTitle, margin, currentY)
+		      currentY = currentY + 18
+		      
+		      // Method path
+		      g.FontName = "Courier"
+		      g.FontSize = 9
+		      g.DrawingColor = Color.RGB(50, 50, 150)
+		      
+		      Var methodPath As String = hs.MethodPath
+		      If methodPath.Length > 80 Then
+		        methodPath = methodPath.Left(77) + "..."
+		      End If
+		      g.DrawText(methodPath, margin + 10, currentY)
+		      currentY = currentY + 15
+		      
+		      // Metrics
+		      g.FontName = "Helvetica"
+		      g.FontSize = 9
+		      g.DrawingColor = Color.Black
+		      
+		      Var metricsLine As String = "Complexity: " + hs.ComplexityScore.ToString
+		      metricsLine = metricsLine + " | Parameters: " + hs.ParameterCount.ToString
+		      metricsLine = metricsLine + " | LOC: " + hs.LinesOfCode.ToString
+		      metricsLine = metricsLine + " | Issues: " + hs.IssueCount.ToString
+		      metricsLine = metricsLine + " | Called By: " + hs.CalledByCount.ToString
+		      g.DrawText(metricsLine, margin + 10, currentY)
+		      currentY = currentY + 12
+		      
+		      // Impact (truncated to fit)
+		      g.FontSize = 9
+		      Var impactText As String = "Impact: " + hs.ImpactDescription
+		      If impactText.Length > 90 Then
+		        impactText = impactText.Left(87) + "..."
+		      End If
+		      g.DrawText(impactText, margin + 10, currentY)
+		      currentY = currentY + 20
+		    Next
+		    
+		    // Save the PDF
+		    Var f As FolderItem = New FolderItem(savePath, FolderItem.PathModes.Native)
+		    pdf.Save(f)
+		    
+		  Catch e As RuntimeException
+		    MessageBox("Error generating Hot Spots PDF: " + e.Message)
+		  End Try
+		  
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Function GenerateRefactoringSuggestionsReport(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  // Function GenerateRefactoringSuggestionsReport(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  Try

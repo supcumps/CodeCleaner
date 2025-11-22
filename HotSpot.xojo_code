@@ -1,23 +1,36 @@
 #tag Class
-Protected Class MethodMetrics
+Protected Class HotSpot
+	#tag Method, Flags = &h0
+		Sub Constructor()
+		  // Public Sub Constructor()
+		  Redim IssueTypes(-1)
+		  
+		End Sub
+	#tag EndMethod
+
+
 	#tag Property, Flags = &h0
-		CallChainDepth As Integer
+		CalledByCount As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		CallDepth As Integer
+		ComplexityScore As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		Complexity As Integer
+		HotSpotScore As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		Element As CodeElement
+		ImpactDescription As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		HasTooManyParameters As Boolean = False
+		IssueCount As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		IssueTypes() As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
@@ -25,15 +38,23 @@ Protected Class MethodMetrics
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		MethodName As String
+		MethodPath As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		OptionalParameterCount As Integer
+		MissingErrorHandling As Boolean
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		NestingDepth As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
 		ParameterCount As Integer
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		RiskLevel As String
 	#tag EndProperty
 
 
@@ -79,44 +100,52 @@ Protected Class MethodMetrics
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="LinesOfCode"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="Integer"
-			EditorType=""
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="Complexity"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="Integer"
-			EditorType=""
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="CallDepth"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="Integer"
-			EditorType=""
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="CallChainDepth"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="Integer"
-			EditorType=""
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="MethodName"
+			Name="MethodPath"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType="MultiLineEditor"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="RiskLevel"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="ImpactDescription"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="HotSpotScore"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="ComplexityScore"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="NestingDepth"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="Integer"
+			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
 			Name="ParameterCount"
@@ -127,7 +156,7 @@ Protected Class MethodMetrics
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="OptionalParameterCount"
+			Name="LinesOfCode"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
@@ -135,10 +164,18 @@ Protected Class MethodMetrics
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="HasTooManyParameters"
+			Name="IssueCount"
 			Visible=false
 			Group="Behavior"
-			InitialValue="False"
+			InitialValue=""
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="MissingErrorHandling"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
 			Type="Boolean"
 			EditorType=""
 		#tag EndViewProperty

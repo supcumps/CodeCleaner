@@ -361,6 +361,106 @@ Begin DesktopWindow CodeCleanWindow
       _mName          =   ""
       _mPanelIndex    =   0
    End
+   Begin DesktopBevelButton GenerateHotSpotsPDFButton
+      Active          =   False
+      AllowAutoDeactivate=   True
+      AllowFocus      =   True
+      AllowTabStop    =   True
+      BackgroundColor =   &c00000000
+      BevelStyle      =   0
+      Bold            =   False
+      ButtonStyle     =   0
+      Caption         =   "Generate Hot Spots Report"
+      CaptionAlignment=   3
+      CaptionDelta    =   0
+      CaptionPosition =   1
+      Enabled         =   False
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      HasBackgroundColor=   False
+      Height          =   22
+      Icon            =   0
+      IconAlignment   =   0
+      IconDeltaX      =   0
+      IconDeltaY      =   0
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   43
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MenuStyle       =   0
+      PanelIndex      =   0
+      Scope           =   2
+      TabIndex        =   8
+      TabPanelIndex   =   0
+      TextColor       =   &c00000000
+      Tooltip         =   ""
+      Top             =   88
+      Transparent     =   False
+      Underline       =   False
+      Value           =   False
+      Visible         =   True
+      Width           =   179
+      _mIndex         =   0
+      _mInitialParent =   ""
+      _mName          =   ""
+      _mPanelIndex    =   0
+   End
+   Begin DesktopBevelButton btnShowAllHotSpots
+      Active          =   False
+      AllowAutoDeactivate=   True
+      AllowFocus      =   True
+      AllowTabStop    =   True
+      BackgroundColor =   &c00000000
+      BevelStyle      =   0
+      Bold            =   False
+      ButtonStyle     =   0
+      Caption         =   "Show All  Hot Spots "
+      CaptionAlignment=   3
+      CaptionDelta    =   0
+      CaptionPosition =   1
+      Enabled         =   False
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      HasBackgroundColor=   False
+      Height          =   22
+      Icon            =   0
+      IconAlignment   =   0
+      IconDeltaX      =   0
+      IconDeltaY      =   0
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   234
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MenuStyle       =   0
+      PanelIndex      =   0
+      Scope           =   2
+      TabIndex        =   9
+      TabPanelIndex   =   0
+      TextColor       =   &c00000000
+      Tooltip         =   ""
+      Top             =   88
+      Transparent     =   False
+      Underline       =   False
+      Value           =   False
+      Visible         =   True
+      Width           =   179
+      _mIndex         =   0
+      _mInitialParent =   ""
+      _mName          =   ""
+      _mPanelIndex    =   0
+   End
 End
 #tag EndDesktopWindow
 
@@ -514,7 +614,8 @@ End
 		  ExportButton.Enabled = True
 		  btnGenerateFlowchart.Enabled = True
 		  btnRefactoringSuggestions.Enabled = True
-		  
+		  GenerateHotSpotsPDFButton.Enabled = True
+		  btnShowAllHotSpots.Enabled =True
 		  
 		  Var allElements() As CodeElement = mAnalyzer.GetAllElements()
 		  MessageBox("Scan complete! Found " + allElements.Count.ToString + " code elements.")
@@ -683,6 +784,97 @@ End
 		  Else
 		    MessageBox("Error generating refactoring suggestions report.")
 		  End If
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events GenerateHotSpotsPDFButton
+	#tag Event
+		Sub Pressed()
+		  // Button: GenerateHotSpotsPDFButton
+		  
+		  // Sub GenerateHotSpotsPDFButton_Pressed()
+		  If mAnalyzer = Nil Then
+		    MessageBox("Please scan a project first")
+		    Return
+		  End If
+		  
+		  // Get method elements - use GetMethodElements() like the working button
+		  Var elements() As CodeElement = mAnalyzer.GetMethodElements()
+		  
+		  If elements.Count = 0 Then
+		    MessageBox("No methods found in the scanned project")
+		    Return
+		  End If
+		  
+		  // Generate hot spots
+		  Var hotSpots() As HotSpot = HotSpotsGenerator.GenerateHotSpots(elements)
+		  
+		  If hotSpots.Count = 0 Then
+		    MessageBox("No significant hot spots detected in this project!")
+		    Return
+		  End If
+		  
+		  // Ask user where to save
+		  Var dlg As New SaveFileDialog
+		  dlg.SuggestedFileName = "HotSpots_Report.pdf"
+		  dlg.Filter = "PDF Files|*.pdf"
+		  
+		  Var f As FolderItem = dlg.ShowModal
+		  If f <> Nil Then
+		    Var generator As New ReportGenerator
+		    
+		    // Convert FolderItem to String
+		    Var projectName As String
+		    If mLastScannedFolder <> Nil Then
+		      projectName = mLastScannedFolder.Name
+		    Else
+		      projectName = "Unknown Project"
+		    End If
+		    
+		    generator.GenerateHotSpotsReportPDF(hotSpots, f.NativePath, projectName)
+		    
+		    MessageBox("Hot Spots report generated successfully!" + EndOfLine + _
+		    "Found " + hotSpots.Count.ToString + " hot spots")
+		  End If
+		  
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events btnShowAllHotSpots
+	#tag Event
+		Sub Pressed()
+		  // Button: btnShowAllHotSpots
+		  
+		  // Sub btnShowAllHotSpots_Pressed()
+		  If mAnalyzer = Nil Then
+		    MessageBox("Please scan a project first")
+		    Return
+		  End If
+		  
+		  // Get method elements - use GetMethodElements() like the working button
+		  Var elements() As CodeElement = mAnalyzer.GetMethodElements()
+		  
+		  If elements.Count = 0 Then
+		    MessageBox("No methods found in the scanned project")
+		    Return
+		  End If
+		  
+		  // Generate hot spots
+		  Var hotSpots() As HotSpot = HotSpotsGenerator.GenerateHotSpots(elements)
+		  
+		  If hotSpots.Count = 0 Then
+		    txtResults.Text = "✓ No significant hot spots detected in this project!"
+		    Return
+		  End If
+		  
+		  // Generate and display text report
+		  Var report As String = CodeCleanWindowHelpers.GenerateHotSpotsTextReport(hotSpots)
+		  txtResults.Text = report
+		  
+		  // Optional: Scroll to top
+		  txtResults.SelectionStart = 0
+		  txtResults.SelectionLength = 0
+		  
 		End Sub
 	#tag EndEvent
 #tag EndEvents

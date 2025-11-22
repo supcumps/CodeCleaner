@@ -540,6 +540,54 @@ Protected Module CodeCleanWindowHelpers
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
+		Function GenerateHotSpotsTextReport(hotSpots() As HotSpot) As String
+		  Var result As String = EndOfLine + "═══════════════════════════════════════" + EndOfLine
+		  result = result + "🔥 HOT SPOTS ANALYSIS - COMPLETE REPORT" + EndOfLine
+		  result = result + "═══════════════════════════════════════" + EndOfLine + EndOfLine
+		  
+		  If hotSpots.Count = 0 Then
+		    result = result + "✓ No significant hot spots detected!" + EndOfLine
+		    Return result
+		  End If
+		  
+		  // Count by risk level
+		  Var critical() As HotSpot = HotSpotsGenerator.GetHotSpotsByRiskLevel(hotSpots, "CRITICAL")
+		  Var high() As HotSpot = HotSpotsGenerator.GetHotSpotsByRiskLevel(hotSpots, "HIGH")
+		  Var medium() As HotSpot = HotSpotsGenerator.GetHotSpotsByRiskLevel(hotSpots, "MEDIUM")
+		  Var low() As HotSpot = HotSpotsGenerator.GetHotSpotsByRiskLevel(hotSpots, "LOW")
+		  
+		  result = result + "Total Hot Spots: " + hotSpots.Count.ToString + EndOfLine + EndOfLine
+		  result = result + "Risk Breakdown:" + EndOfLine
+		  result = result + "  🔴 CRITICAL: " + critical.Count.ToString + EndOfLine
+		  result = result + "  🟠 HIGH:     " + high.Count.ToString + EndOfLine
+		  result = result + "  🟡 MEDIUM:   " + medium.Count.ToString + EndOfLine
+		  result = result + "  ⚪ LOW:      " + low.Count.ToString + EndOfLine + EndOfLine
+		  
+		  result = result + "Complete Hot Spots List (All " + hotSpots.Count.ToString + "):" + EndOfLine
+		  result = result + "─────────────────────────────────────────────" + EndOfLine + EndOfLine
+		  
+		  For i As Integer = 0 To hotSpots.LastIndex
+		    Var hs As HotSpot = hotSpots(i)
+		    Var rank As String = Str(i + 1)
+		    
+		    result = result + rank + ". [" + hs.RiskLevel + "] Score: " + hs.HotSpotScore.ToString + EndOfLine
+		    result = result + "   Method: " + hs.MethodPath + EndOfLine
+		    result = result + "   Metrics: Complexity=" + hs.ComplexityScore.ToString
+		    result = result + ", Params=" + hs.ParameterCount.ToString
+		    result = result + ", LOC=" + hs.LinesOfCode.ToString
+		    result = result + ", Issues=" + hs.IssueCount.ToString
+		    result = result + ", CalledBy=" + hs.CalledByCount.ToString + EndOfLine
+		    result = result + "   Impact: " + hs.ImpactDescription + EndOfLine + EndOfLine
+		  Next
+		  
+		  result = result + "💡 Focus on highest-scoring hot spots first for maximum impact." + EndOfLine
+		  
+		  Return result
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
 		Sub GenerateTextReport(Extends win As CodeCleanWindow)
 		  //Function GenerateTextReport(Extends win As CodeCleanWindow)
 		  
