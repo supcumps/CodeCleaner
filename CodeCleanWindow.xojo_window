@@ -177,7 +177,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   212
+      Left            =   229
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -227,7 +227,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   403
+      Left            =   433
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -277,7 +277,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   403
+      Left            =   433
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -327,7 +327,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   212
+      Left            =   229
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -451,6 +451,35 @@ Begin DesktopWindow CodeCleanWindow
       _mName          =   ""
       _mPanelIndex    =   0
    End
+   Begin DesktopCheckBox chkDebugMode
+      AllowAutoDeactivate=   True
+      Bold            =   False
+      Caption         =   "Enable Debug Logging"
+      Enabled         =   True
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      Height          =   20
+      Index           =   -2147483648
+      Italic          =   False
+      Left            =   43
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      Scope           =   0
+      TabIndex        =   12
+      TabPanelIndex   =   0
+      TabStop         =   True
+      Tooltip         =   ""
+      Top             =   70
+      Transparent     =   False
+      Underline       =   False
+      Visible         =   True
+      VisualState     =   0
+      Width           =   166
+   End
 End
 #tag EndDesktopWindow
 
@@ -490,14 +519,14 @@ End
 		  mAnalyzer.ScanProject(folder)
 		  
 		  // After mAnalyzer.ScanProject(folder)
-		  System.DebugLog("=== CHECKING ELEMENTS ===")
+		  Logger.Log("=== CHECKING ELEMENTS ===")
 		  
 		  Var all() As CodeElement = mAnalyzer.GetAllElements()
-		  System.DebugLog("GetAllElements: " + all.Count.ToString)
+		  Logger.Log("GetAllElements: " + all.Count.ToString)
 		  
 		  If all.Count > 0 Then
-		    System.DebugLog("First element: " + all(0).Name + " (Type: " + all(0).ElementType + ")")
-		    System.DebugLog("Second element: " + all(1).Name + " (Type: " + all(1).ElementType + ")")
+		    Logger.Log("First element: " + all(0).Name + " (Type: " + all(0).ElementType + ")")
+		    Logger.Log("Second element: " + all(1).Name + " (Type: " + all(1).ElementType + ")")
 		  End If
 		  
 		  // Build relationships between elements
@@ -506,7 +535,7 @@ End
 		  // 🔥 DETECT UNUSED CODE - THIS WAS MISSING!
 		  Var deadCode() As CodeSmell = mAnalyzer.DetectDeadCode()
 		  
-		  System.DebugLog("=== ELEMENT TYPE CHECK ===")
+		  Logger.Log("=== ELEMENT TYPE CHECK ===")
 		  
 		  all() = mAnalyzer.GetAllElements()
 		  Var classes() As CodeElement = mAnalyzer.GetClassElements()
@@ -519,55 +548,55 @@ End
 		      methodsWithCode = methodsWithCode + 1
 		    End If
 		  Next
-		  System.DebugLog("Methods with code: " + methodsWithCode.ToString + " of " + methods.Count.ToString)
-		  System.DebugLog("Methods with calls: " + methods.Count.ToString)  // Will show how many have CallsTo populated
+		  Logger.Log("Methods with code: " + methodsWithCode.ToString + " of " + methods.Count.ToString)
+		  Logger.Log("Methods with calls: " + methods.Count.ToString)  // Will show how many have CallsTo populated
 		  
-		  System.DebugLog("Total: " + all.Count.ToString)
-		  System.DebugLog("Classes: " + classes.Count.ToString)
-		  System.DebugLog("Modules: " + modules.Count.ToString)
-		  System.DebugLog("Methods: " + methods.Count.ToString)
+		  Logger.Log("Total: " + all.Count.ToString)
+		  Logger.Log("Classes: " + classes.Count.ToString)
+		  Logger.Log("Modules: " + modules.Count.ToString)
+		  Logger.Log("Methods: " + methods.Count.ToString)
 		  
 		  // Show first few elements and their types
 		  For i As Integer = 0 To Min(5, all.Count - 1)
 		    Var indexStr As String = i.ToString
 		    Var nameStr As String = all(i).Name
 		    Var typeStr As String = all(i).ElementType
-		    System.DebugLog("Element " + indexStr + ": " + nameStr + " (Type: '" + typeStr + "')")
+		    Logger.Log("Element " + indexStr + ": " + nameStr + " (Type: '" + typeStr + "')")
 		  Next
 		  
 		  // Analyze error handling patterns
 		  mAnalyzer.AnalyzeErrorHandling()
 		  
 		  // DEBUG: Test parameter parsing
-		  System.DebugLog("=== PARAMETER PARSING DEBUG ===")
+		  Logger.Log("=== PARAMETER PARSING DEBUG ===")
 		  methods() = mAnalyzer.GetMethodElements
 		  Var testCount As Integer = 0
 		  
 		  For Each method As CodeElement In methods
 		    Var codeCheck As String = method.Code.Trim
 		    If codeCheck <> "" And testCount < 5 Then  // Test first 5 methods
-		      System.DebugLog("")
-		      System.DebugLog("Method: " + method.FullPath)
-		      System.DebugLog("Code starts with:")
+		      Logger.Log("")
+		      Logger.Log("Method: " + method.FullPath)
+		      Logger.Log("Code starts with:")
 		      
 		      // Show first 3 lines of code
 		      Var lines() As String = method.Code.Split(EndOfLine)
 		      For i As Integer = 0 To Min(2, lines.Count - 1)
 		        Var lineNum As String = i.ToString
-		        System.DebugLog("  Line " + lineNum + ": " + lines(i))
+		        Logger.Log("  Line " + lineNum + ": " + lines(i))
 		      Next
 		      
 		      // Test parsing
 		      Var result As Dictionary = mAnalyzer.ParseMethodParameters(method.Code)
 		      Var paramCount As Integer = result.Value("parameterCount")
 		      Var paramCountStr As String = paramCount.ToString
-		      System.DebugLog("Detected parameters: " + paramCountStr)
+		      Logger.Log("Detected parameters: " + paramCountStr)
 		      
 		      testCount = testCount + 1
 		    End If
 		  Next
-		  System.DebugLog("=== END DEBUG ===")
-		  System.DebugLog("=== PARAMETER EXTRACTION TEST ===")
+		  Logger.Log("=== END DEBUG ===")
+		  Logger.Log("=== PARAMETER EXTRACTION TEST ===")
 		  
 		  Var methodsWithParams As Integer = 0
 		  Var totalParams As Integer = 0
@@ -577,22 +606,22 @@ End
 		      methodsWithParams = methodsWithParams + 1
 		      totalParams = totalParams + method.ParameterCount
 		      Var paramCountStr As String = method.ParameterCount.ToString
-		      System.DebugLog("✓ " + method.Name + ": " + paramCountStr + " params")
-		      System.DebugLog("  Parameters: " + method.Parameters)
+		      Logger.Log("✓ " + method.Name + ": " + paramCountStr + " params")
+		      Logger.Log("  Parameters: " + method.Parameters)
 		    End If
 		  Next
 		  
-		  System.DebugLog("")
+		  Logger.Log("")
 		  Var methodsWithParamsStr As String = methodsWithParams.ToString
 		  Var totalParamsStr As String = totalParams.ToString
-		  System.DebugLog("Methods with parameters: " + methodsWithParamsStr)
-		  System.DebugLog("Total parameters: " + totalParamsStr)
+		  Logger.Log("Methods with parameters: " + methodsWithParamsStr)
+		  Logger.Log("Total parameters: " + totalParamsStr)
 		  
 		  // TEST: Check if code is being captured
 		  methods() = mAnalyzer.GetMethodElements
-		  System.DebugLog("=== CODE CAPTURE TEST ===")
+		  Logger.Log("=== CODE CAPTURE TEST ===")
 		  Var methodCountStr As String = methods.Count.ToString
-		  System.DebugLog("Total methods found: " + methodCountStr)
+		  Logger.Log("Total methods found: " + methodCountStr)
 		  
 		  methodsWithCode = 0
 		  For Each method As CodeElement In methods
@@ -600,18 +629,18 @@ End
 		    If codeCheck <> "" Then
 		      methodsWithCode = methodsWithCode + 1
 		      Var codeLengthStr As String = method.Code.Length.ToString
-		      System.DebugLog("✅ " + method.Name + " has " + codeLengthStr + " chars")
+		      Logger.Log("✅ " + method.Name + " has " + codeLengthStr + " chars")
 		    End If
 		  Next
 		  
 		  Var withCodeStr As String = methodsWithCode.ToString
 		  Var totalMethodsStr As String = methods.Count.ToString
-		  System.DebugLog("Methods with code: " + withCodeStr + " of " + totalMethodsStr)
+		  Logger.Log("Methods with code: " + withCodeStr + " of " + totalMethodsStr)
 		  
 		  If methodsWithCode = 0 Then
-		    System.DebugLog("❌ NO CODE CAPTURED! Need to update CodeElement and ProjectAnalyzer")
+		    Logger.Log("❌ NO CODE CAPTURED! Need to update CodeElement and ProjectAnalyzer")
 		  Else
-		    System.DebugLog("✅ Code is being captured!")
+		    Logger.Log("✅ Code is being captured!")
 		  End If
 		  
 		  // Generate text report (keeping your existing functionality)
@@ -646,7 +675,7 @@ End
 		  Format(dt.Day, "00") + "_" + _
 		  Format(dt.Hour, "00") + Format(dt.Minute, "00")
 		  
-		  Var saveFile As FolderItem = FolderItem.ShowSaveFileDialog("application/pdf", "CodeAnalysis_" + timestamp + ".pdf")
+		  Var saveFile As FolderItem = FolderItem.ShowSaveFileDiaLog("application/pdf", "CodeAnalysis_" + timestamp + ".pdf")
 		  If saveFile <> Nil Then
 		    Try
 		      Var generator As New ReportGenerator
@@ -726,15 +755,15 @@ End
 		  End If
 		  
 		  // DEBUG: Check complexity values
-		  System.DebugLog("=== Checking Complexity Values ===")
+		  Logger.Log("=== Checking Complexity Values ===")
 		  For i As Integer = 0 To Min(4, elements.LastIndex)
 		    Var element As CodeElement = elements(i)
-		    System.DebugLog("Method: " + element.FullPath)
-		    System.DebugLog("  Complexity: " + element.CyclomaticComplexity.ToString)
-		    System.DebugLog("  LOC: " + element.LinesOfCode.ToString)
-		    System.DebugLog("  Params: " + element.ParameterCount.ToString)
+		    Logger.Log("Method: " + element.FullPath)
+		    Logger.Log("  Complexity: " + element.CyclomaticComplexity.ToString)
+		    Logger.Log("  LOC: " + element.LinesOfCode.ToString)
+		    Logger.Log("  Params: " + element.ParameterCount.ToString)
 		  Next
-		  System.DebugLog("=== End Debug ===")
+		  Logger.Log("=== End Debug ===")
 		  
 		  
 		  
@@ -846,6 +875,13 @@ End
 		    mAnalyzer.GenerateInteractiveDependencyGraph(folder)
 		  End If
 		  
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events chkDebugMode
+	#tag Event
+		Sub ValueChanged()
+		   Logger.DebugMode = Me.Value
 		End Sub
 	#tag EndEvent
 #tag EndEvents

@@ -9,7 +9,7 @@ Protected Module HotSpotsGenerator
 		  hs.ComplexityScore = element.CyclomaticComplexity
 		  
 		  // DEBUG: Check what we're getting
-		  System.DebugLog("Method: " + element.FullPath + " - Complexity: " + element.CyclomaticComplexity.ToString)
+		  Logger.Log("Method: " + element.FullPath + " - Complexity: " + element.CyclomaticComplexity.ToString)
 		  
 		  hs.ParameterCount = element.ParameterCount
 		  hs.LinesOfCode = element.LinesOfCode
@@ -360,6 +360,14 @@ Protected Module HotSpotsGenerator
 			Visible=true
 			Group="Position"
 			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Untitled"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
 			Type="Integer"
 			EditorType=""
 		#tag EndViewProperty

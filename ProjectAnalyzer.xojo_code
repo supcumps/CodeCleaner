@@ -44,7 +44,7 @@ Protected Class ProjectAnalyzer
 		Sub AnalyzeErrorHandling()
 		  // Analyze error handling patterns in all methods
 		  
-		  System.DebugLog("=== Starting Error Handling Analysis ===")
+		  Logger.Log("=== Starting Error Handling Analysis ===")
 		  
 		  For Each element As CodeElement In GetMethodElements()  
 		    If element.Code.Trim = "" Then Continue
@@ -96,7 +96,7 @@ Protected Class ProjectAnalyzer
 		    End If
 		  Next
 		  
-		  System.DebugLog("=== Error Handling Analysis Complete ===")
+		  Logger.Log("=== Error Handling Analysis Complete ===")
 		End Sub
 	#tag EndMethod
 
@@ -261,7 +261,7 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h0
 		Sub AnalyzeRefactoringOpportunities()
 		  // Public Sub AnalyzeRefactoringOpportunities()
-		  System.DebugLog("=== Starting Refactoring Analysis ===")
+		  Logger.Log("=== Starting Refactoring Analysis ===")
 		  
 		  Var methods() As CodeElement = GetMethodElements()
 		  
@@ -301,7 +301,7 @@ Protected Class ProjectAnalyzer
 		    End If
 		  Next
 		  
-		  System.DebugLog("=== Refactoring Analysis Complete ===")
+		  Logger.Log("=== Refactoring Analysis Complete ===")
 		  
 		End Sub
 	#tag EndMethod
@@ -450,7 +450,7 @@ Protected Class ProjectAnalyzer
 		  html = html + "        allNodes = " + nodesJSON + ";" + EndOfLine
 		  html = html + "        allEdges = " + edgesJSON + ";" + EndOfLine
 		  html = html + "" + EndOfLine
-		  html = html + "        console.log('Loaded ' + allNodes.length + ' nodes and ' + allEdges.length + ' edges');" + EndOfLine
+		  html = html + "        console.Logger.Log('Loaded ' + allNodes.length + ' nodes and ' + allEdges.length + ' edges');" + EndOfLine
 		  html = html + "" + EndOfLine
 		  html = html + "        var nodes = new vis.DataSet(allNodes);" + EndOfLine
 		  html = html + "        var edges = new vis.DataSet(allEdges);" + EndOfLine
@@ -752,7 +752,7 @@ Protected Class ProjectAnalyzer
 		  // Scan all files again to find relationships between elements
 		  ScanForRelationships()
 		  
-		  System.DebugLog("=== BuildRelationships STARTED ===")
+		  Logger.Log("=== BuildRelationships STARTED ===")
 		  // Build parent-child relationships
 		  For Each element As CodeElement In mElements
 		    If element.ElementType = "METHOD" Or element.ElementType = "PROPERTY" Or element.ElementType = "VARIABLE" Then
@@ -793,16 +793,16 @@ Protected Class ProjectAnalyzer
 		      If element.CallsTo.Count > 0 Then
 		        methodsWithCalls = methodsWithCalls + 1
 		        totalCalls = totalCalls + element.CallsTo.Count
-		        System.DebugLog("Method " + element.Name + " calls " + element.CallsTo.Count.ToString + " other methods")
+		        Logger.Log("Method " + element.Name + " calls " + element.CallsTo.Count.ToString + " other methods")
 		      End If
 		    End If
 		  Next
 		  
 		  Var methodsStr As String = methodsWithCalls.ToString
 		  Var callsStr As String = totalCalls.ToString
-		  System.DebugLog("Methods with calls: " + methodsStr)
-		  System.DebugLog("Total calls: " + callsStr)
-		  System.DebugLog("=== BuildRelationships COMPLETED ===")
+		  Logger.Log("Methods with calls: " + methodsStr)
+		  Logger.Log("Total calls: " + callsStr)
+		  Logger.Log("=== BuildRelationships COMPLETED ===")
 		  
 		End Sub
 	#tag EndMethod
@@ -1320,7 +1320,7 @@ Protected Class ProjectAnalyzer
 		  
 		  Var smells() As CodeSmell
 		  
-		  System.DebugLog("=== Starting Code Smell Detection ===")
+		  Logger.Log("=== Starting Code Smell Detection ===")
 		  
 		  ' Detect each type of smell and add to array
 		  Var temp() As CodeSmell
@@ -1360,7 +1360,7 @@ Protected Class ProjectAnalyzer
 		    smells.Add(smell)
 		  Next
 		  
-		  System.DebugLog("Total code smells detected: " + smells.Count.ToString)
+		  Logger.Log("Total code smells detected: " + smells.Count.ToString)
 		  
 		  DetectedSmells = smells
 		  Return smells
@@ -1395,11 +1395,11 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h0
 		Function DetectDeadCode() As CodeSmell()
 		  // Private Function DetectDeadCode() As CodeSmell()
-		  System.DebugLog("=== DETECTDEADCODE STARTED ===")
+		  Logger.Log("=== DETECTDEADCODE STARTED ===")
 		  
 		  Var allElements() As CodeElement = GetAllElements()
 		  Var totalElements As String = allElements.Count.ToString
-		  System.DebugLog("Total elements to check: " + totalElements)
+		  Logger.Log("Total elements to check: " + totalElements)
 		  
 		  Var codeSmells() As CodeSmell
 		  
@@ -1415,12 +1415,12 @@ Protected Class ProjectAnalyzer
 		  // Clean the code for analysis (remove comments and strings)
 		  Var cleanedText As String = CleanCodeForAnalysis(allCode)
 		  Var cleanedLength As String = cleanedText.Length.ToString
-		  System.DebugLog("Cleaned code length: " + cleanedLength + " characters")
+		  Logger.Log("Cleaned code length: " + cleanedLength + " characters")
 		  
 		  // Mark which elements are actually used
-		  System.DebugLog("About to call MarkUsedElements...")
+		  Logger.Log("About to call MarkUsedElements...")
 		  MarkUsedElements(cleanedText, allElements)
-		  System.DebugLog("MarkUsedElements completed")
+		  Logger.Log("MarkUsedElements completed")
 		  
 		  // Count unused elements
 		  Var unusedCount As Integer = 0
@@ -1428,12 +1428,12 @@ Protected Class ProjectAnalyzer
 		    If Not element.IsUsed Then
 		      unusedCount = unusedCount + 1
 		      Var logMsg As String = "UNUSED: " + element.FullPath + " (Type: " + element.ElementType + ")"
-		      System.DebugLog(logMsg)
+		      Logger.Log(logMsg)
 		    End If
 		  Next
 		  
 		  Var unusedStr As String = unusedCount.ToString
-		  System.DebugLog("Total unused elements: " + unusedStr)
+		  Logger.Log("Total unused elements: " + unusedStr)
 		  
 		  // Find unused elements and create code smells
 		  For Each element As CodeElement In allElements
@@ -1450,7 +1450,7 @@ Protected Class ProjectAnalyzer
 		    End If
 		  Next
 		  
-		  System.DebugLog("=== DETECTDEADCODE COMPLETED ===")
+		  Logger.Log("=== DETECTDEADCODE COMPLETED ===")
 		  Return codeSmells
 		  
 		End Function
@@ -1565,7 +1565,7 @@ Protected Class ProjectAnalyzer
 		      smell.MetricValue = otherClassReferences
 		      smells.Add(smell)
 		      
-		      System.DebugLog("Feature Envy detected: " + method.FullPath)
+		      Logger.Log("Feature Envy detected: " + method.FullPath)
 		    End If
 		  Next
 		  
@@ -1651,7 +1651,7 @@ Protected Class ProjectAnalyzer
 		      smell.MetricValue = methodCount
 		      smells.Add(smell)
 		      
-		      System.DebugLog("God Class detected: " + classElement.FullPath + " (" + reason + ")")
+		      Logger.Log("God Class detected: " + classElement.FullPath + " (" + reason + ")")
 		    End If
 		  Next
 		  
@@ -1768,7 +1768,7 @@ Protected Class ProjectAnalyzer
 		      smell.MetricValue = magicNumbers.Count
 		      smells.Add(smell)
 		      
-		      System.DebugLog("Magic Numbers detected in: " + method.FullPath)
+		      Logger.Log("Magic Numbers detected in: " + method.FullPath)
 		    End If
 		  Next
 		  
@@ -1780,18 +1780,18 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h21
 		Private Sub DetectMethodCalls(code As String, callingMethod As CodeElement)
 		  // Public Sub DetectMethodCalls(code As String, callingMethod As CodeElement)
-		  System.DebugLog("=== DetectMethodCalls DEBUG ===")
-		  System.DebugLog("Caller: " + callingMethod.Name)
-		  System.DebugLog("Code length: " + code.Length.ToString)
+		  Logger.Log("=== DetectMethodCalls DEBUG ===")
+		  Logger.Log("Caller: " + callingMethod.Name)
+		  Logger.Log("Code length: " + code.Length.ToString)
 		  
 		  If code.Trim = "" Then
-		    System.DebugLog("  ⚠️ Code is EMPTY!")
+		    Logger.Log("  ⚠️ Code is EMPTY!")
 		    Return
 		  End If
 		  
 		  // Show first 200 chars of code
 		  Var preview As String = code.Left(Min(200, code.Length))
-		  System.DebugLog("  Preview: " + preview)
+		  Logger.Log("  Preview: " + preview)
 		  
 		  // Get all methods to check against
 		  Var methods() As CodeElement = GetMethodElements()
@@ -1851,15 +1851,15 @@ Protected Class ProjectAnalyzer
 		      If Not alreadyLinked Then
 		        callingMethod.CallsTo.Add(methodElement)
 		        methodElement.CalledBy.Add(callingMethod)
-		        System.DebugLog("  Relationship: " + callingMethod.Name + " calls " + methodElement.Name)
+		        Logger.Log("  Relationship: " + callingMethod.Name + " calls " + methodElement.Name)
 		      End If
 		    End If
 		  Next
 		  
-		  System.DebugLog("  Detected " + callingMethod.CallsTo.Count.ToString + " calls")
+		  Logger.Log("  Detected " + callingMethod.CallsTo.Count.ToString + " calls")
 		  If callingMethod.CallsTo.Count > 0 Then
 		    For Each called As CodeElement In callingMethod.CallsTo
-		      System.DebugLog("    → " + called.Name)
+		      Logger.Log("    → " + called.Name)
 		    Next
 		  End If
 		  
@@ -1933,7 +1933,7 @@ Protected Class ProjectAnalyzer
 		        smell.MetricValue = callingClasses.Count
 		        smells.Add(smell)
 		        
-		        System.DebugLog("Shotgun Surgery risk: " + method.FullPath)
+		        Logger.Log("Shotgun Surgery risk: " + method.FullPath)
 		      End If
 		    End If
 		  Next
@@ -2284,7 +2284,7 @@ Protected Class ProjectAnalyzer
 		  
 		  element.OptionalParameterCount = optionalCount
 		  element.ParameterCount =  params.Count
-		  System.DebugLog("Number of parameters = " + element.ParameterCount.ToString)
+		  Logger.Log("Number of parameters = " + element.ParameterCount.ToString)
 		End Sub
 	#tag EndMethod
 
@@ -2329,47 +2329,47 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h21
 		Private Sub FinalizeMethod(context As ParsingContext)
 		  //Private Sub FinalizeMethod(context As ParsingContext)
-		  System.DebugLog("=== FinalizeMethod Called ===")
-		  System.DebugLog("  InMethodOrFunction: " + context.InMethodOrFunction.ToString)
-		  System.DebugLog("  CurrentMethodFullPath: " + context.CurrentMethodFullPath)
+		  Logger.Log("=== FinalizeMethod Called ===")
+		  Logger.Log("  InMethodOrFunction: " + context.InMethodOrFunction.ToString)
+		  Logger.Log("  CurrentMethodFullPath: " + context.CurrentMethodFullPath)
 		  
 		  If context.InMethodOrFunction And context.CurrentMethodFullPath <> "" Then
-		    System.DebugLog("  Looking for element: " + context.CurrentMethodFullPath)
+		    Logger.Log("  Looking for element: " + context.CurrentMethodFullPath)
 		    
 		    // Find the element in mElements
 		    Var element As CodeElement = FindElementByFullPath(context.CurrentMethodFullPath)
 		    
 		    If element <> Nil Then
-		      System.DebugLog("  Element FOUND!")
+		      Logger.Log("  Element FOUND!")
 		      
 		      // Store the accumulated code
 		      element.Code = context.CurrentMethodCode
 		      
-		      System.DebugLog("  Code length: " + context.CurrentMethodCode.Length.ToString)
-		      System.DebugLog("  Code lines: " + context.CurrentMethodCode.CountFields(EndOfLine).ToString)
+		      Logger.Log("  Code length: " + context.CurrentMethodCode.Length.ToString)
+		      Logger.Log("  Code lines: " + context.CurrentMethodCode.CountFields(EndOfLine).ToString)
 		      
 		      // Calculate lines of code
 		      element.LinesOfCode = element.Code.CountFields(EndOfLine)
 		      
-		      System.DebugLog("  LOC set to: " + element.LinesOfCode.ToString)
+		      Logger.Log("  LOC set to: " + element.LinesOfCode.ToString)
 		      
 		      // NOW calculate complexity (after code is accumulated)
 		      element.CyclomaticComplexity = CalculateMethodComplexity(element)
 		      
-		      System.DebugLog("  Complexity calculated: " + element.CyclomaticComplexity.ToString)
+		      Logger.Log("  Complexity calculated: " + element.CyclomaticComplexity.ToString)
 		      
 		      // Reset context
 		      context.InMethodOrFunction = False
 		      context.CurrentMethodFullPath = ""
 		      context.CurrentMethodCode = ""
 		    Else
-		      System.DebugLog("  ERROR: Element NOT FOUND!")
+		      Logger.Log("  ERROR: Element NOT FOUND!")
 		    End If
 		  Else
-		    System.DebugLog("  Skipped - not in method or no path")
+		    Logger.Log("  Skipped - not in method or no path")
 		  End If
 		  
-		  System.DebugLog("=== End FinalizeMethod ===")
+		  Logger.Log("=== End FinalizeMethod ===")
 		  
 		End Sub
 	#tag EndMethod
@@ -2768,14 +2768,14 @@ Protected Class ProjectAnalyzer
 		  Var methods() As CodeElement
 		  
 		  For Each element As CodeElement In mElements
-		    System.DebugLog("Checking: " + element.Name + " Type: " + element.ElementType)
+		    Logger.Log("Checking: " + element.Name + " Type: " + element.ElementType)
 		    
 		    If element.ElementType = "METHOD" Then  // ← Is this matching?
 		      methods.Add(element)
 		    End If
 		  Next
 		  
-		  System.DebugLog("Found " + methods.Count.ToString + " methods")
+		  Logger.Log("Found " + methods.Count.ToString + " methods")
 		  Return methods
 		  
 		End Function
@@ -2783,7 +2783,7 @@ Protected Class ProjectAnalyzer
 
 	#tag Method, Flags = &h0
 		Function GetMethodsExceedingParameterThreshold(threshold As Integer) As Integer
-		  // Var methods() As CodeElement = GetMethodElements()
+		  Var methods() As CodeElement = GetMethodElements()
 		  Var count As Integer = 0
 		  
 		  For Each method As CodeElement In methods
@@ -2885,7 +2885,7 @@ Protected Class ProjectAnalyzer
 		      Var methodElement As CodeElement = FindElementByFullPath(currentMethodFullPath)
 		      If methodElement <> Nil Then
 		        methodElement.Code = currentMethodCode
-		        System.DebugLog("Stored code for method: " + currentMethodFullPath + " (" + currentMethodCode.Length.ToString + " chars)")
+		        Logger.Log("Stored code for method: " + currentMethodFullPath + " (" + currentMethodCode.Length.ToString + " chars)")
 		      End If
 		    End If
 		    
@@ -3031,11 +3031,11 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h21
 		Private Sub MarkUsedElements(cleanedText As String, allElements() As CodeElement)
 		  // Private Sub MarkUsedElements(cleanedText As String, allElements() As CodeElement)
-		  System.DebugLog("=== MARKUSEDELEMENTS STARTED ===")
+		  Logger.Log("=== MARKUSEDELEMENTS STARTED ===")
 		  Var totalStr As String = allElements.Count.ToString
-		  System.DebugLog("Total elements to check: " + totalStr)
+		  Logger.Log("Total elements to check: " + totalStr)
 		  Var cleanedLengthStr As String = cleanedText.Length.ToString
-		  System.DebugLog("Cleaned text length: " + cleanedLengthStr)
+		  Logger.Log("Cleaned text length: " + cleanedLengthStr)
 		  
 		  // Count system methods (event handlers)
 		  Var systemMethodCount As Integer = 0
@@ -3043,12 +3043,12 @@ Protected Class ProjectAnalyzer
 		    If element.ElementType = "METHOD" And IsSystemMethod(element.Name) Then
 		      Var countPlus As Integer = systemMethodCount + 1
 		      systemMethodCount = countPlus
-		      System.DebugLog("Event handler: " + element.FullPath)
+		      Logger.Log("Event handler: " + element.FullPath)
 		    End If
 		  Next
 		  
 		  Var handlerCountStr As String = systemMethodCount.ToString
-		  System.DebugLog("Total event handlers found: " + handlerCountStr)
+		  Logger.Log("Total event handlers found: " + handlerCountStr)
 		  
 		  Var unusedEventHandlers() As String
 		  
@@ -3065,11 +3065,11 @@ Protected Class ProjectAnalyzer
 		        
 		        If cleanedText.IndexOf(searchPattern1) >= 0 Or cleanedText.IndexOf(searchPattern2) >= 0 Then
 		          element.IsUsed = True
-		          System.DebugLog("Event handler USED: " + fullName)
+		          Logger.Log("Event handler USED: " + fullName)
 		        Else
 		          element.IsUsed = False
 		          unusedEventHandlers.Add(fullName)
-		          System.DebugLog("Event handler UNUSED: " + fullName)
+		          Logger.Log("Event handler UNUSED: " + fullName)
 		        End If
 		      Else
 		        // Regular methods: check by name
@@ -3121,9 +3121,9 @@ Protected Class ProjectAnalyzer
 		  
 		  // Log summary
 		  Var unusedCountStr As String = unusedEventHandlers.Count.ToString
-		  System.DebugLog("Found " + unusedCountStr + " unused event handlers")
+		  Logger.Log("Found " + unusedCountStr + " unused event handlers")
 		  For Each handler As String In unusedEventHandlers
-		    System.DebugLog("  - " + handler)
+		    Logger.Log("  - " + handler)
 		  Next
 		  
 		End Sub
@@ -3330,7 +3330,7 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h21
 		Private Sub ProcessMethodDeclaration(declaration As String, context As ParsingContext)
 		  // Private Sub ProcessMethodDeclaration(declaration As String, context As ParsingContext)
-		  System.DebugLog(">>> ProcessMethodDeclaration CALLED with: " + declaration)
+		  Logger.Log(">>> ProcessMethodDeclaration CALLED with: " + declaration)
 		  
 		  // Finalize any previous method that was still open
 		  If context.InMethodOrFunction Then
@@ -3338,10 +3338,10 @@ Protected Class ProjectAnalyzer
 		  End If
 		  
 		  Var methodName As String = ExtractMethodName(declaration)
-		  System.DebugLog(">>> Method name extracted: " + methodName)
+		  Logger.Log(">>> Method name extracted: " + methodName)
 		  
 		  Var fullPath As String = BuildFullPath(context.CurrentModule, context.CurrentClass, methodName)
-		  System.DebugLog(">>> Full path: " + fullPath)
+		  Logger.Log(">>> Full path: " + fullPath)
 		  
 		  Var element As New CodeElement("METHOD", methodName, fullPath, context.FileName)
 		  
@@ -3357,7 +3357,7 @@ Protected Class ProjectAnalyzer
 		  context.CurrentMethodFullPath = fullPath
 		  context.CurrentMethodCode = ""
 		  
-		  System.DebugLog(">>> Method declaration processed successfully")
+		  Logger.Log(">>> Method declaration processed successfully")
 		  
 		End Sub
 	#tag EndMethod
@@ -3404,7 +3404,7 @@ Protected Class ProjectAnalyzer
 		    ParseFileContent(content, item.Name)
 		    
 		  Catch e As IOException
-		    System.DebugLog("Error reading file: " + item.Name + " - " + e.Message)
+		    Logger.Log("Error reading file: " + item.Name + " - " + e.Message)
 		  End Try
 		End Sub
 	#tag EndMethod
@@ -3429,9 +3429,9 @@ Protected Class ProjectAnalyzer
 		    If Not ElementLookup.HasKey(fullPath) Then
 		      Var element As New CodeElement("VARIABLE", varName, fullPath, fileName)
 		      mElements.Add(element)
-		      System.DebugLog("    Total elements: " + mElements.Count.ToString)
+		      Logger.Log("    Total elements: " + mElements.Count.ToString)
 		      ElementLookup.Value(fullPath) = element
-		      System.DebugLog("Found variable: " + fullPath + " in " + fileName)
+		      Logger.Log("Found variable: " + fullPath + " in " + fileName)
 		    End If
 		  End If
 		End Sub
@@ -3451,17 +3451,17 @@ Protected Class ProjectAnalyzer
 		  // Private Sub ScanFileForRelationships(item As FolderItem)
 		  // Guard clauses - check if we can actually read this item
 		  If item = Nil Then
-		    System.DebugLog("⚠️ ScanFileForRelationships: item is Nil")
+		    Logger.Log("⚠️ ScanFileForRelationships: item is Nil")
 		    Return
 		  End If
 		  
 		  If Not item.Exists Then
-		    System.DebugLog("⚠️ ScanFileForRelationships: item does not exist")
+		    Logger.Log("⚠️ ScanFileForRelationships: item does not exist")
 		    Return
 		  End If
 		  
 		  If item.IsFolder Then
-		    System.DebugLog("⚠️ ScanFileForRelationships: item is a folder, not a file: " + item.Name)
+		    Logger.Log("⚠️ ScanFileForRelationships: item is a folder, not a file: " + item.Name)
 		    Return
 		  End If
 		  
@@ -3486,7 +3486,7 @@ Protected Class ProjectAnalyzer
 		    MarkUsedElements(cleanedText, allElements)
 		    
 		  Catch e As IOException
-		    System.DebugLog("❌ Error scanning file for relationships: " + item.Name + " - " + e.Message)
+		    Logger.Log("❌ Error scanning file for relationships: " + item.Name + " - " + e.Message)
 		  End Try
 		  
 		  
@@ -3511,7 +3511,7 @@ Protected Class ProjectAnalyzer
 		  '
 		  'Catch e As IOException
 		  'Var errorMsg As String = "Error scanning file for relationships: " + item.Name
-		  'System.DebugLog(errorMsg)
+		  'Logger.Log(errorMsg)
 		  'End Try
 		  
 		End Sub
@@ -3520,12 +3520,12 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h0
 		Sub ScanForRelationships()
 		  // Public Sub ScanForRelationships()
-		  System.DebugLog("=== ScanForRelationships: Analyzing method calls ===")
+		  Logger.Log("=== ScanForRelationships: Analyzing method calls ===")
 		  
 		  // Get all methods that have been collected
 		  Var methods() As CodeElement = GetMethodElements()
 		  
-		  System.DebugLog("Found " + methods.Count.ToString + " methods to analyze for call relationships")
+		  Logger.Log("Found " + methods.Count.ToString + " methods to analyze for call relationships")
 		  
 		  // For each method with code, detect what it calls
 		  Var methodsWithCode As Integer = 0
@@ -3536,8 +3536,8 @@ Protected Class ProjectAnalyzer
 		    End If
 		  Next
 		  
-		  System.DebugLog("Analyzed " + methodsWithCode.ToString + " methods with code")
-		  System.DebugLog("=== Relationship scan complete ===")
+		  Logger.Log("Analyzed " + methodsWithCode.ToString + " methods with code")
+		  Logger.Log("=== Relationship scan complete ===")
 		  
 		  
 		End Sub
@@ -3545,7 +3545,7 @@ Protected Class ProjectAnalyzer
 
 	#tag Method, Flags = &h0
 		Sub ScanProject(folder As FolderItem)
-		  System.DebugLog("=== ScanProject CALLED ===")
+		  Logger.Log("=== ScanProject CALLED ===")
 		  
 		  // Clear previous data
 		  AllElements.RemoveAll
@@ -3576,7 +3576,7 @@ Protected Class ProjectAnalyzer
 		      End If
 		      
 		    Catch e As RuntimeException
-		      System.DebugLog("Error processing item: " + If(item <> Nil, item.Name, "unknown"))
+		      Logger.Log("Error processing item: " + If(item <> Nil, item.Name, "unknown"))
 		      Continue
 		    End Try
 		  Next
@@ -3635,6 +3635,10 @@ Protected Class ProjectAnalyzer
 
 	#tag Property, Flags = &h0
 		ClassElements() As CodeElement
+	#tag EndProperty
+
+	#tag Property, Flags = &h0
+		DebugMode As Boolean = False
 	#tag EndProperty
 
 	#tag Property, Flags = &h0

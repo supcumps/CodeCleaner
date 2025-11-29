@@ -24,6 +24,7 @@ Class=HotSpot;HotSpot.xojo_code;&h000000000807F7FF;&h0000000000000000;false
 Module=HotSpotsGenerator;HotSpotsGenerator.xojo_code;&h0000000040D55FFF;&h0000000000000000;false
 Class=MethodNode;MethodNode.xojo_code;&h00000000018EA7FF;&h0000000000000000;false
 Class=Dependency;Dependency.xojo_code;&h0000000016482FFF;&h0000000000000000;false
+Module=Logger;Logger.xojo_code;&h000000007C810FFF;&h0000000000000000;false
 DefaultWindow=CodeCleanWindow
 AppMenuBar=MainMenuBar
 MajorVersion=1

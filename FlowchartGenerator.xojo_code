@@ -475,7 +475,7 @@ Protected Class FlowchartGenerator
 		    Return True
 		    
 		  Catch e As RuntimeException
-		    System.DebugLog("Error generating PDF: " + e.Message)
+		    Logger.Log("Error generating PDF: " + e.Message)
 		    Return False
 		  End Try
 		End Function

@@ -274,7 +274,7 @@ Protected Class ReportGenerator
 		    // Reset to top of new page
 		    yPos = 120
 		    
-		    System.DebugLog("Added new page " + currentPage.ToString + ", reset yPos to: " + yPos.ToString)
+		    Logger.Log("Added new page " + currentPage.ToString + ", reset yPos to: " + yPos.ToString)
 		  End If
 		  
 		  Return yPos
@@ -403,7 +403,7 @@ Protected Class ReportGenerator
 		Function GenerateAnalysisReportPDF(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  // Function GenerateAnalysisReportPDF(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  Try
-		    System.DebugLog("=== Starting Analysis PDF Generation ===")
+		    Logger.Log("=== Starting Analysis PDF Generation ===")
 		    
 		    // Setup
 		    Var pageWidth As Integer = 612
@@ -413,86 +413,86 @@ Protected Class ReportGenerator
 		    Var bottomMargin As Double = 100  // Space to leave at bottom before new page
 		    
 		    // Create PDF with first page
-		    System.DebugLog("Creating PDF document...")
+		    Logger.Log("Creating PDF document...")
 		    Var pdf As New PDFDocument(pageWidth, pageHeight)
 		    Var g As Graphics = pdf.Graphics
 		    
 		    If g = Nil Then
-		      System.DebugLog("ERROR: Graphics context is Nil!")
+		      Logger.Log("ERROR: Graphics context is Nil!")
 		      Return False
 		    End If
-		    System.DebugLog("Graphics context created successfully")
+		    Logger.Log("Graphics context created successfully")
 		    
 		    // White background
 		    g.DrawingColor = Color.White
 		    g.FillRectangle(0, 0, pageWidth, pageHeight)
-		    System.DebugLog("Background filled")
+		    Logger.Log("Background filled")
 		    
 		    Var yPos As Double = 120
 		    Var currentPage As Integer = 1
-		    System.DebugLog("MAIN FUNCTION - Initial yPos: " + yPos.ToString + ", Page: " + currentPage.ToString)
+		    Logger.Log("MAIN FUNCTION - Initial yPos: " + yPos.ToString + ", Page: " + currentPage.ToString)
 		    
 		    // Render sections with page break checks
-		    System.DebugLog("Rendering header...")
+		    Logger.Log("Rendering header...")
 		    yPos = RenderHeader(g, pageWidth, margin, yPos)
 		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
-		    System.DebugLog("Header rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Header rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering quality score...")
+		    Logger.Log("Rendering quality score...")
 		    yPos = RenderQualityScore(g, analyzer, pageWidth, margin, lineHeight, yPos)
 		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
-		    System.DebugLog("Quality score rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Quality score rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering code smells...")
+		    Logger.Log("Rendering code smells...")
 		    yPos = RenderCodeSmellsWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, lineHeight, yPos, currentPage, bottomMargin)
-		    System.DebugLog("Code smells rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Code smells rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering summary...")
+		    Logger.Log("Rendering summary...")
 		    yPos = RenderSummary(g, analyzer, margin, lineHeight, yPos)
 		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
-		    System.DebugLog("Summary rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Summary rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering unused elements...")
+		    Logger.Log("Rendering unused elements...")
 		    yPos = RenderUnusedElementsWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, lineHeight, yPos, currentPage, bottomMargin)
-		    System.DebugLog("Unused elements rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Unused elements rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering error handling...")
+		    Logger.Log("Rendering error handling...")
 		    yPos = RenderErrorHandlingAnalysisWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, bottomMargin, lineHeight, yPos, currentPage)
 		    
-		    System.DebugLog("Error handling rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Error handling rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering complexity metrics...")
+		    Logger.Log("Rendering complexity metrics...")
 		    yPos = RenderComplexityMetrics(g, analyzer, margin, lineHeight, yPos)
 		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
-		    System.DebugLog("Complexity metrics rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Complexity metrics rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering parameter complexity...")
+		    Logger.Log("Rendering parameter complexity...")
 		    yPos = RenderParameterComplexityDetailsWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, lineHeight, yPos, currentPage, bottomMargin)
-		    System.DebugLog("Parameter complexity rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Parameter complexity rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering top complex methods...")
+		    Logger.Log("Rendering top complex methods...")
 		    yPos = RenderTopComplexMethodsWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, lineHeight, yPos, currentPage, bottomMargin)
-		    System.DebugLog("Top complex methods rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Top complex methods rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering relationships...")
+		    Logger.Log("Rendering relationships...")
 		    yPos = RenderRelationships(g, analyzer, margin, lineHeight, yPos)
 		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
-		    System.DebugLog("Relationships rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Relationships rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering footer...")
+		    Logger.Log("Rendering footer...")
 		    yPos = RenderFooter(g, pageWidth, margin, lineHeight, yPos)
-		    System.DebugLog("Footer rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Footer rendered. yPos: " + yPos.ToString)
 		    
 		    // Save
-		    System.DebugLog("Saving PDF with " + currentPage.ToString + " pages...")
+		    Logger.Log("Saving PDF with " + currentPage.ToString + " pages...")
 		    pdf.Save(saveFile)
-		    System.DebugLog("=== Analysis PDF SAVED SUCCESSFULLY ===")
+		    Logger.Log("=== Analysis PDF SAVED SUCCESSFULLY ===")
 		    Return True
 		    
 		  Catch e As RuntimeException
-		    System.DebugLog("ERROR generating PDF: " + e.Message)
+		    Logger.Log("ERROR generating PDF: " + e.Message)
 		    If e.Stack <> Nil Then
-		      System.DebugLog("Stack: " + String.FromArray(e.Stack, EndOfLine))
+		      Logger.Log("Stack: " + String.FromArray(e.Stack, EndOfLine))
 		    End If
 		    Return False
 		  End Try
@@ -668,66 +668,66 @@ Protected Class ReportGenerator
 		Function GenerateRefactoringSuggestionsReport(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  // Function GenerateRefactoringSuggestionsReport(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  Try
-		    System.DebugLog("=== Starting PDF Generation ===")
+		    Logger.Log("=== Starting PDF Generation ===")
 		    
 		    // Setup
 		    Var pageWidth As Integer = 612
 		    Var margin As Double = 50
 		    Var lineHeight As Double = 14
 		    
-		    System.DebugLog("Calculating height...")
+		    Logger.Log("Calculating height...")
 		    // Calculate height needed
 		    Var totalHeight As Integer = CalculateRefactoringPDFHeight(analyzer, margin, lineHeight)
-		    System.DebugLog("Total height: " + totalHeight.ToString)
+		    Logger.Log("Total height: " + totalHeight.ToString)
 		    
 		    '// Add extra height buffer to prevent cutoff
 		    'totalHeight = totalHeight + 50
 		    
 		    // Create PDF
-		    System.DebugLog("Creating PDF document...")
+		    Logger.Log("Creating PDF document...")
 		    Var pdf As New PDFDocument(pageWidth, totalHeight)
 		    Var g As Graphics = pdf.Graphics
 		    
 		    If g = Nil Then
-		      System.DebugLog("ERROR: Graphics context is Nil!")
+		      Logger.Log("ERROR: Graphics context is Nil!")
 		      Return False
 		    End If
-		    System.DebugLog("Graphics context created successfully")
+		    Logger.Log("Graphics context created successfully")
 		    
 		    // White background from absolute top
 		    g.DrawingColor = Color.White
 		    g.FillRectangle(0, 0, pageWidth, totalHeight)
-		    System.DebugLog("Background filled")
+		    Logger.Log("Background filled")
 		    
 		    Var yPos As Double = margin + 30
 		    
 		    // Render sections
-		    System.DebugLog("Rendering header...")
+		    Logger.Log("Rendering header...")
 		    yPos = RenderRefactoringHeader(g, pageWidth, margin, yPos)
-		    System.DebugLog("Header rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Header rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering summary...")
+		    Logger.Log("Rendering summary...")
 		    yPos = RenderRefactoringSummary(g, analyzer, margin, lineHeight, yPos)
-		    System.DebugLog("Summary rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Summary rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering suggestions...")
+		    Logger.Log("Rendering suggestions...")
 		    yPos = RenderRefactoringSuggestions(g, analyzer, pageWidth, margin, lineHeight, yPos)
-		    System.DebugLog("Suggestions rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Suggestions rendered. yPos: " + yPos.ToString)
 		    
-		    System.DebugLog("Rendering footer...")
+		    Logger.Log("Rendering footer...")
 		    yPos = RenderRefactoringFooter(g, pageWidth, margin, lineHeight, yPos)
-		    System.DebugLog("Footer rendered. yPos: " + yPos.ToString)
+		    Logger.Log("Footer rendered. yPos: " + yPos.ToString)
 		    
 		    // Save
-		    System.DebugLog("Saving PDF...")
+		    Logger.Log("Saving PDF...")
 		    pdf.Save(saveFile)
-		    System.DebugLog("=== PDF SAVED SUCCESSFULLY ===")
+		    Logger.Log("=== PDF SAVED SUCCESSFULLY ===")
 		    Return True
 		    
 		  Catch e As RuntimeException
-		    System.DebugLog("ERROR: " + e.Message)
+		    Logger.Log("ERROR: " + e.Message)
 		    If e.Stack <> Nil Then
-		      System.DebugLog("Stack: " + String.FromArray(e.Stack, EndOfLine))
+		      Logger.Log("Stack: " + String.FromArray(e.Stack, EndOfLine))
 		    End If
 		    Return False
 		  End Try
@@ -992,8 +992,8 @@ Protected Class ReportGenerator
 		  // Private Function RenderCodeSmellsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
 		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
 		  
-		  System.DebugLog("=== CODE SMELLS SECTION ===")
-		  System.DebugLog("Total smells detected: " + smells.Count.ToString)
+		  Logger.Log("=== CODE SMELLS SECTION ===")
+		  Logger.Log("Total smells detected: " + smells.Count.ToString)
 		  
 		  // Section header
 		  g.FontSize = 14
@@ -1010,16 +1010,16 @@ Protected Class ReportGenerator
 		  For Each smell As CodeSmell In smells
 		    smellCount = smellCount + 1
 		    
-		    System.DebugLog("Processing smell #" + smellCount.ToString + ": " + smell.SmellType)
-		    System.DebugLog("  MethodName: " + smell.MethodName)
-		    System.DebugLog("  Description: " + smell.Description)
+		    Logger.Log("Processing smell #" + smellCount.ToString + ": " + smell.SmellType)
+		    Logger.Log("  MethodName: " + smell.MethodName)
+		    Logger.Log("  Description: " + smell.Description)
 		    
 		    // Estimate 150 pixels per smell
 		    Var estimatedHeight As Double = 150
 		    
 		    // Check if we need a new page
 		    If (yPos + estimatedHeight) > (pageHeight - bottomMargin) Then
-		      System.DebugLog("  Page break needed at yPos: " + yPos.ToString)
+		      Logger.Log("  Page break needed at yPos: " + yPos.ToString)
 		      g.NextPage
 		      currentPage = currentPage + 1
 		      
@@ -1041,16 +1041,16 @@ Protected Class ReportGenerator
 		      g.Bold = False
 		      g.DrawingColor = Color.Black
 		      
-		      System.DebugLog("  New page " + currentPage.ToString + ", reset yPos to: " + yPos.ToString)
+		      Logger.Log("  New page " + currentPage.ToString + ", reset yPos to: " + yPos.ToString)
 		    End If
 		    
 		    // Render the smell
 		    Var startY As Double = yPos
 		    yPos = RenderSingleCodeSmell(g, smell, margin, lineHeight, yPos, pageWidth)
-		    System.DebugLog("  Rendered smell, yPos moved from " + startY.ToString + " to " + yPos.ToString)
+		    Logger.Log("  Rendered smell, yPos moved from " + startY.ToString + " to " + yPos.ToString)
 		  Next
 		  
-		  System.DebugLog("Finished rendering " + smellCount.ToString + " code smells")
+		  Logger.Log("Finished rendering " + smellCount.ToString + " code smells")
 		  yPos = yPos + 20
 		  Return yPos
 		  
@@ -1486,8 +1486,8 @@ Protected Class ReportGenerator
 	#tag Method, Flags = &h21
 		Private Function RenderHeader(g As Graphics, pageWidth As Integer, margin As Double, yPos As Double) As Double
 		  // Private Function RenderHeader(g As Graphics, pageWidth As Integer, margin As Double, yPos As Double) As Double
-		  System.DebugLog("RenderHeader STARTING - yPos: " + yPos.ToString)
-		  System.DebugLog("RenderHeader RECEIVED yPos: " + yPos.ToString)
+		  Logger.Log("RenderHeader STARTING - yPos: " + yPos.ToString)
+		  Logger.Log("RenderHeader RECEIVED yPos: " + yPos.ToString)
 		  
 		  // Render the report header
 		  g.FontSize = 18
@@ -1497,12 +1497,12 @@ Protected Class ReportGenerator
 		  Var halfpagewidth As Double = (pageWidth / 2)
 		  Var maxpageWidth As Double = (pageWidth - margin * 2)
 		  
-		  System.DebugLog("About to call DrawCenteredText with yPos: " + yPos.ToString)
+		  Logger.Log("About to call DrawCenteredText with yPos: " + yPos.ToString)
 		  DrawCenteredText(g, "CODE ANALYSIS REPORT", halfpagewidth, yPos, maxpageWidth)
-		  System.DebugLog("After DrawCenteredText, yPos still: " + yPos.ToString)
+		  Logger.Log("After DrawCenteredText, yPos still: " + yPos.ToString)
 		  
 		  yPos = yPos + 30 // ADD to move down
-		  System.DebugLog("After adding 30, yPos: " + yPos.ToString)
+		  Logger.Log("After adding 30, yPos: " + yPos.ToString)
 		  
 		  // Decorative line
 		  g.DrawingColor = Color.RGB(100, 100, 100)
@@ -1510,9 +1510,9 @@ Protected Class ReportGenerator
 		  g.DrawLine(margin, yPos, pagewidthMinusMargin, yPos)
 		  
 		  yPos = yPos + 25 // ADD to move down
-		  System.DebugLog("After adding 25, final yPos: " + yPos.ToString)
+		  Logger.Log("After adding 25, final yPos: " + yPos.ToString)
 		  
-		  System.DebugLog("RenderHeader COMPLETE - returning yPos: " + yPos.ToString)
+		  Logger.Log("RenderHeader COMPLETE - returning yPos: " + yPos.ToString)
 		  return yPos
 		End Function
 	#tag EndMethod
@@ -2339,12 +2339,12 @@ Protected Class ReportGenerator
 		  // Private Function RenderSingleSuggestion(g As Graphics, suggestion As RefactoringSuggestion, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
 		  // Safety checks
 		  If suggestion = Nil Then
-		    System.DebugLog("WARNING: Suggestion is Nil")
+		    Logger.Log("WARNING: Suggestion is Nil")
 		    Return yPos
 		  End If
 		  
 		  If suggestion.Element = Nil Then
-		    System.DebugLog("WARNING: Suggestion.Element is Nil")
+		    Logger.Log("WARNING: Suggestion.Element is Nil")
 		    Return yPos
 		  End If
 		  
