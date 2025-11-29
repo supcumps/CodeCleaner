@@ -120,33 +120,67 @@ Protected Class ReportGenerator
 	#tag Method, Flags = &h21
 		Private Function CalculatePDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
 		  // Private Function CalculatePDFHeight(analyzer As ProjectAnalyzer, margin As Double, lineHeight As Double) As Integer
-		  ' More conservative height calculation
+		  Var estimatedHeight As Integer = 0
 		  
+		  // Header section
+		  estimatedHeight = estimatedHeight + 200
+		  
+		  // Quality Score section
+		  estimatedHeight = estimatedHeight + 300
+		  
+		  // Code Smells section
 		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
+		  estimatedHeight = estimatedHeight + 150 // Header
+		  estimatedHeight = estimatedHeight + (smells.Count * 100)
+		  
+		  // Summary section
+		  estimatedHeight = estimatedHeight + 150
+		  
+		  // Unused elements section
+		  Var unused() As CodeElement = analyzer.GetUnusedElements()
+		  estimatedHeight = estimatedHeight + 150 // Header
+		  estimatedHeight = estimatedHeight + (unused.Count * 20)
+		  
+		  // Error handling section
 		  Var stats As Dictionary = analyzer.GetErrorHandlingStats()
 		  Var riskyCount As Integer = 0
-		  
 		  If stats.HasKey("riskyMethods") Then
 		    Var riskyMethods() As CodeElement = stats.Value("riskyMethods")
 		    riskyCount = riskyMethods.Count
 		  End If
+		  estimatedHeight = estimatedHeight + 200 // Header
+		  estimatedHeight = estimatedHeight + (riskyCount * 80)
 		  
-		  // REDUCED estimates per item
-		  Var estimatedHeight As Integer = 2500  // Base sections (reduced from 3000)
-		  estimatedHeight = estimatedHeight + (smells.Count * 100)  // 100 pixels per smell (reduced from 150)
-		  estimatedHeight = estimatedHeight + (riskyCount * 80)  // 80 pixels per method (reduced from 100)
+		  // Complexity metrics section
+		  estimatedHeight = estimatedHeight + 200
+		  
+		  // Parameter complexity section
+		  Var methods() As CodeElement = analyzer.GetMethodElements()
+		  Var complexParamCount As Integer = 0
+		  For Each m As CodeElement In methods
+		    If m.ParameterCount >= 5 Then
+		      complexParamCount = complexParamCount + 1
+		    End If
+		  Next
+		  estimatedHeight = estimatedHeight + 150
+		  estimatedHeight = estimatedHeight + (complexParamCount * 70)
+		  
+		  // Top complex methods section
+		  estimatedHeight = estimatedHeight + 150
+		  estimatedHeight = estimatedHeight + (10 * 60) // Top 10 methods
+		  
+		  // Relationships section
+		  estimatedHeight = estimatedHeight + 150
+		  
+		  // Footer
+		  estimatedHeight = estimatedHeight + 150
 		  
 		  // Add 20% buffer
 		  estimatedHeight = Round(estimatedHeight * 1.2)
 		  
-		  // Bounds
+		  // Set reasonable bounds
 		  If estimatedHeight < 5000 Then estimatedHeight = 5000
-		  If estimatedHeight > 18000 Then estimatedHeight = 18000  // Even lower max
-		  
-		  System.DebugLog("=== PDF HEIGHT CALCULATION ===")
-		  System.DebugLog("Code Smells: " + str(smells.Count)+ " × 100 = " + Str(smells.Count * 100) )
-		  System.DebugLog("Risky Methods: " + Str(riskyCount) + " × 80 = " + Str(riskyCount * 80))
-		  System.DebugLog("FINAL HEIGHT: " + estimatedHeight.ToString + " pixels")
+		  If estimatedHeight > 30000 Then estimatedHeight = 30000
 		  
 		  Return estimatedHeight
 		  
@@ -220,6 +254,30 @@ Protected Class ReportGenerator
 		  height = height + 135
 		  
 		  Return CType(height, Integer)
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function CheckPageBreak(g As Graphics, yPos As Double, pageWidth As Integer, pageHeight As Integer, margin As Double, bottomMargin As Double, ByRef currentPage As Integer) As Double
+		  // Private Function CheckPageBreak(g As Graphics, yPos As Double, pageWidth As Integer, pageHeight As Integer, margin As Double, bottomMargin As Double, ByRef currentPage As Integer) As Double
+		  // Check if we're too close to the bottom
+		  If yPos > (pageHeight - bottomMargin) Then
+		    // Add new page
+		    g.NextPage
+		    currentPage = currentPage + 1
+		    
+		    // White background for new page
+		    g.DrawingColor = Color.White
+		    g.FillRectangle(0, 0, pageWidth, pageHeight)
+		    
+		    // Reset to top of new page
+		    yPos = 120
+		    
+		    System.DebugLog("Added new page " + currentPage.ToString + ", reset yPos to: " + yPos.ToString)
+		  End If
+		  
+		  Return yPos
 		  
 		End Function
 	#tag EndMethod
@@ -332,10 +390,12 @@ Protected Class ReportGenerator
 
 	#tag Method, Flags = &h21
 		Private Sub DrawCenteredText(g As Graphics, text As String, centerX As Double, y As Double, maxWidth As Double)
-		  // Draw text centered at the given x position
-		  Var textWidth As Double = g.TextWidth(text)
+		  // Private Sub DrawCenteredText(g As Graphics, text As String, centerX As Double, y As Double, maxWidth As Double)
+		  Var textWidth As Double = g.TextWidth(Text)
 		  Var x As Double = centerX - (textWidth / 2)
-		  g.DrawText(text, x, y)
+		  
+		  g.DrawText(Text, x, y)
+		  
 		End Sub
 	#tag EndMethod
 
@@ -343,44 +403,99 @@ Protected Class ReportGenerator
 		Function GenerateAnalysisReportPDF(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  // Function GenerateAnalysisReportPDF(analyzer As ProjectAnalyzer, saveFile As FolderItem) As Boolean
 		  Try
+		    System.DebugLog("=== Starting Analysis PDF Generation ===")
+		    
 		    // Setup
 		    Var pageWidth As Integer = 612
-		    Var margin As Double = 100
+		    Var pageHeight As Integer = 792  // Standard US Letter
+		    Var margin As Double = 50
 		    Var lineHeight As Double = 14
+		    Var bottomMargin As Double = 100  // Space to leave at bottom before new page
 		    
-		    // Calculate height and create PDF
-		    Var totalHeight As Integer = CalculatePDFHeight(analyzer, margin, lineHeight)
-		    Var pdf As New PDFDocument(pageWidth, totalHeight)
+		    // Create PDF with first page
+		    System.DebugLog("Creating PDF document...")
+		    Var pdf As New PDFDocument(pageWidth, pageHeight)
 		    Var g As Graphics = pdf.Graphics
+		    
+		    If g = Nil Then
+		      System.DebugLog("ERROR: Graphics context is Nil!")
+		      Return False
+		    End If
+		    System.DebugLog("Graphics context created successfully")
 		    
 		    // White background
 		    g.DrawingColor = Color.White
-		    g.FillRectangle(0, 0, pageWidth, totalHeight)
+		    g.FillRectangle(0, 0, pageWidth, pageHeight)
+		    System.DebugLog("Background filled")
 		    
-		    Var yPos As Double = margin
+		    Var yPos As Double = 120
+		    Var currentPage As Integer = 1
+		    System.DebugLog("MAIN FUNCTION - Initial yPos: " + yPos.ToString + ", Page: " + currentPage.ToString)
 		    
-		    // Render each section
+		    // Render sections with page break checks
+		    System.DebugLog("Rendering header...")
 		    yPos = RenderHeader(g, pageWidth, margin, yPos)
-		    yPos = RenderQualityScore(g, analyzer, pageWidth, margin, lineHeight, yPos)  
-		    yPos = RenderCodeSmells(g, analyzer, pageWidth, margin, lineHeight, yPos)
+		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    System.DebugLog("Header rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering quality score...")
+		    yPos = RenderQualityScore(g, analyzer, pageWidth, margin, lineHeight, yPos)
+		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    System.DebugLog("Quality score rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering code smells...")
+		    yPos = RenderCodeSmellsWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, lineHeight, yPos, currentPage, bottomMargin)
+		    System.DebugLog("Code smells rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering summary...")
 		    yPos = RenderSummary(g, analyzer, margin, lineHeight, yPos)
-		    yPos = RenderUnusedElements(g, analyzer, margin, lineHeight, yPos)
-		    yPos = RenderErrorHandlingAnalysis(g, analyzer, margin, lineHeight, yPos)
+		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    System.DebugLog("Summary rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering unused elements...")
+		    yPos = RenderUnusedElementsWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, lineHeight, yPos, currentPage, bottomMargin)
+		    System.DebugLog("Unused elements rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering error handling...")
+		    yPos = RenderErrorHandlingAnalysisWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, bottomMargin, lineHeight, yPos, currentPage)
+		    
+		    System.DebugLog("Error handling rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering complexity metrics...")
 		    yPos = RenderComplexityMetrics(g, analyzer, margin, lineHeight, yPos)
-		    yPos = RenderParameterComplexityDetails(g, analyzer, margin, lineHeight, yPos)
-		    yPos = RenderTopComplexMethods(g, analyzer, margin, lineHeight, yPos)
+		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    System.DebugLog("Complexity metrics rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering parameter complexity...")
+		    yPos = RenderParameterComplexityDetailsWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, lineHeight, yPos, currentPage, bottomMargin)
+		    System.DebugLog("Parameter complexity rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering top complex methods...")
+		    yPos = RenderTopComplexMethodsWithPageBreaks(g, analyzer, pageWidth, pageHeight, margin, lineHeight, yPos, currentPage, bottomMargin)
+		    System.DebugLog("Top complex methods rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering relationships...")
 		    yPos = RenderRelationships(g, analyzer, margin, lineHeight, yPos)
+		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    System.DebugLog("Relationships rendered. yPos: " + yPos.ToString)
+		    
+		    System.DebugLog("Rendering footer...")
 		    yPos = RenderFooter(g, pageWidth, margin, lineHeight, yPos)
+		    System.DebugLog("Footer rendered. yPos: " + yPos.ToString)
 		    
 		    // Save
+		    System.DebugLog("Saving PDF with " + currentPage.ToString + " pages...")
 		    pdf.Save(saveFile)
+		    System.DebugLog("=== Analysis PDF SAVED SUCCESSFULLY ===")
 		    Return True
 		    
 		  Catch e As RuntimeException
-		    System.DebugLog("Error generating PDF: " + e.Message)
+		    System.DebugLog("ERROR generating PDF: " + e.Message)
+		    If e.Stack <> Nil Then
+		      System.DebugLog("Stack: " + String.FromArray(e.Stack, EndOfLine))
+		    End If
 		    Return False
 		  End Try
-		  
 		End Function
 	#tag EndMethod
 
@@ -565,8 +680,8 @@ Protected Class ReportGenerator
 		    Var totalHeight As Integer = CalculateRefactoringPDFHeight(analyzer, margin, lineHeight)
 		    System.DebugLog("Total height: " + totalHeight.ToString)
 		    
-		    // Add extra height buffer to prevent cutoff
-		    totalHeight = totalHeight + 50
+		    '// Add extra height buffer to prevent cutoff
+		    'totalHeight = totalHeight + 50
 		    
 		    // Create PDF
 		    System.DebugLog("Creating PDF document...")
@@ -685,7 +800,7 @@ Protected Class ReportGenerator
 		  
 		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
 		  
-		  yPos = yPos + 20
+		  yPos = yPos + 50
 		  
 		  ' Section header line
 		  g.DrawingColor = Color.RGB(100, 100, 100)
@@ -785,7 +900,7 @@ Protected Class ReportGenerator
 		  For Each key As Variant In typeCount.Keys
 		    Var typeName As String = key.StringValue
 		    Var count As Integer = CType(typeCount.Value(key), Integer)
-		    g.DrawText("  • " + typeName + ": " + count.ToString, margin + 20, yPos)
+		    g.DrawText(" -->>" + typeName + ": " + count.ToString, margin + 20, yPos)
 		    yPos = yPos + lineHeight + 2
 		  Next
 		  
@@ -868,6 +983,77 @@ Protected Class ReportGenerator
 		  End If
 		  
 		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderCodeSmellsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
+		  // Private Function RenderCodeSmellsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
+		  Var smells() As CodeSmell = analyzer.DetectCodeSmells()
+		  
+		  System.DebugLog("=== CODE SMELLS SECTION ===")
+		  System.DebugLog("Total smells detected: " + smells.Count.ToString)
+		  
+		  // Section header
+		  g.FontSize = 14
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("CODE SMELLS DETECTED (" + smells.Count.ToString + ")", margin, yPos)
+		  yPos = yPos + 30
+		  
+		  g.FontSize = 10
+		  g.Bold = False
+		  
+		  // Render each smell with page break checks
+		  Var smellCount As Integer = 0
+		  For Each smell As CodeSmell In smells
+		    smellCount = smellCount + 1
+		    
+		    System.DebugLog("Processing smell #" + smellCount.ToString + ": " + smell.SmellType)
+		    System.DebugLog("  MethodName: " + smell.MethodName)
+		    System.DebugLog("  Description: " + smell.Description)
+		    
+		    // Estimate 150 pixels per smell
+		    Var estimatedHeight As Double = 150
+		    
+		    // Check if we need a new page
+		    If (yPos + estimatedHeight) > (pageHeight - bottomMargin) Then
+		      System.DebugLog("  Page break needed at yPos: " + yPos.ToString)
+		      g.NextPage
+		      currentPage = currentPage + 1
+		      
+		      // White background
+		      g.DrawingColor = Color.White
+		      g.FillRectangle(0, 0, pageWidth, pageHeight)
+		      
+		      // Reset position
+		      yPos = 120
+		      
+		      // Add continuation header
+		      g.FontSize = 12
+		      g.Bold = True
+		      g.DrawingColor = Color.RGB(100, 100, 100)
+		      g.DrawText("CODE SMELLS (continued)", margin, yPos)
+		      yPos = yPos + 25
+		      
+		      g.FontSize = 10
+		      g.Bold = False
+		      g.DrawingColor = Color.Black
+		      
+		      System.DebugLog("  New page " + currentPage.ToString + ", reset yPos to: " + yPos.ToString)
+		    End If
+		    
+		    // Render the smell
+		    Var startY As Double = yPos
+		    yPos = RenderSingleCodeSmell(g, smell, margin, lineHeight, yPos, pageWidth)
+		    System.DebugLog("  Rendered smell, yPos moved from " + startY.ToString + " to " + yPos.ToString)
+		  Next
+		  
+		  System.DebugLog("Finished rendering " + smellCount.ToString + " code smells")
+		  yPos = yPos + 20
+		  Return yPos
+		  
 		  
 		End Function
 	#tag EndMethod
@@ -1162,6 +1348,113 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function RenderErrorHandlingAnalysisWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, bottomMargin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer) As Double
+		  // Private Function RenderErrorHandlingAnalysisWithPageBreaks(g As Graphics, pageWidth As Integer, pageHeight As Integer, margin As Double, bottomMargin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer) As Double
+		  
+		  g.FontSize = 12
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("ERROR HANDLING ANALYSIS", margin, yPos)
+		  g.Bold = False
+		  yPos = yPos + lineHeight + 10
+		  // Private Function RenderErrorHandlingAnalysisWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, bottomMargin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer) As Double
+		  // Check page break before content
+		  yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		  
+		  g.FontSize = 10
+		  
+		  // Missing error handling
+		  Var missingCount As Integer =    analyzer.mMissingErrorHandling.Count
+		  If missingCount > 0 Then
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(200, 0, 0)
+		    g.DrawText("⚠ Missing Error Handling (" + missingCount.ToString + " locations):", margin, yPos)
+		    g.Bold = False
+		    yPos = yPos + lineHeight + 5
+		    
+		    // Check page break before list
+		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    
+		    g.DrawingColor = Color.RGB(80, 80, 80)
+		    
+		    
+		    // Draw missing error handling items
+		    For Each location As String In analyzer.mMissingErrorHandling
+		      Var estimatedHeight As Double = lineHeight * 2
+		      If (yPos + estimatedHeight) > (pageHeight - bottomMargin) Then
+		        yPos = CheckPageBreak(g, yPos + estimatedHeight, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		      End If
+		      g.DrawText(" " + location, margin + 10, yPos)
+		      yPos = yPos + lineHeight
+		    Next
+		    
+		    yPos = yPos + 10
+		  End If
+		  
+		  // Bare catches
+		  Var bareCatchCount As Integer = analyzer.mBareCatches.Count
+		  If bareCatchCount > 0 Then
+		    // Check page break before this section
+		    Var sectionHeight As Double = lineHeight + 5 + (bareCatchCount * lineHeight)
+		    If (yPos + sectionHeight) > (pageHeight - bottomMargin) Then
+		      yPos = CheckPageBreak(g, yPos + sectionHeight, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    End If
+		    
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(200, 100, 0)
+		    g.DrawText("⚠ Bare Catch Blocks (" + bareCatchCount.ToString + " found):", margin, yPos)
+		    g.Bold = False
+		    yPos = yPos + lineHeight + 5
+		    
+		    g.DrawingColor = Color.RGB(80, 80, 80)
+		    For Each location As String In analyzer.mBareCatches
+		      // Check page break for each item
+		      Var estimatedHeight As Double = lineHeight * 2
+		      If (yPos + estimatedHeight) > (pageHeight - bottomMargin) Then
+		        yPos = CheckPageBreak(g, yPos + estimatedHeight, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		      End If
+		      
+		      g.DrawText("  • " + location, margin + 10, yPos)
+		      yPos = yPos + lineHeight
+		    Next
+		    yPos = yPos + 10
+		  End If
+		  
+		  // Risky operations
+		  Var riskyCount As Integer = analyzer.mRiskyOperations.Count
+		  If riskyCount > 0 Then
+		    // Check page break before this section
+		    Var sectionHeight As Double = lineHeight + 5 + (riskyCount * lineHeight)
+		    If (yPos + sectionHeight) > (pageHeight - bottomMargin) Then
+		      yPos = CheckPageBreak(g, yPos + sectionHeight, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    End If
+		    
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(150, 100, 0)
+		    g.DrawText("⚠ Risky Operations (" + riskyCount.ToString + " found):", margin, yPos)
+		    g.Bold = False
+		    yPos = yPos + lineHeight + 5
+		    
+		    g.DrawingColor = Color.RGB(80, 80, 80)
+		    For Each operation As String In analyzer.mRiskyOperations
+		      // Check page break for each item
+		      Var estimatedHeight As Double = lineHeight * 2
+		      If (yPos + estimatedHeight) > (pageHeight - bottomMargin) Then
+		        yPos = CheckPageBreak(g, yPos + estimatedHeight, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		      End If
+		      
+		      g.DrawText("  • " + operation, margin + 10, yPos)
+		      yPos = yPos + lineHeight
+		    Next
+		  End If
+		  
+		  Return yPos
+		  
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function RenderFooter(g As Graphics, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
 		  // Render report footer
 		  
@@ -1192,20 +1485,35 @@ Protected Class ReportGenerator
 
 	#tag Method, Flags = &h21
 		Private Function RenderHeader(g As Graphics, pageWidth As Integer, margin As Double, yPos As Double) As Double
-		  // Render the report header
+		  // Private Function RenderHeader(g As Graphics, pageWidth As Integer, margin As Double, yPos As Double) As Double
+		  System.DebugLog("RenderHeader STARTING - yPos: " + yPos.ToString)
+		  System.DebugLog("RenderHeader RECEIVED yPos: " + yPos.ToString)
 		  
+		  // Render the report header
 		  g.FontSize = 18
 		  g.Bold = True
 		  g.DrawingColor = Color.Black
-		  DrawCenteredText(g, "CODE ANALYSIS REPORT", pageWidth / 2, yPos, pageWidth - (margin * 2))
-		  yPos = yPos + 30
+		  
+		  Var halfpagewidth As Double = (pageWidth / 2)
+		  Var maxpageWidth As Double = (pageWidth - margin * 2)
+		  
+		  System.DebugLog("About to call DrawCenteredText with yPos: " + yPos.ToString)
+		  DrawCenteredText(g, "CODE ANALYSIS REPORT", halfpagewidth, yPos, maxpageWidth)
+		  System.DebugLog("After DrawCenteredText, yPos still: " + yPos.ToString)
+		  
+		  yPos = yPos + 30 // ADD to move down
+		  System.DebugLog("After adding 30, yPos: " + yPos.ToString)
 		  
 		  // Decorative line
 		  g.DrawingColor = Color.RGB(100, 100, 100)
-		  g.DrawLine(margin, yPos, pageWidth - margin, yPos)
-		  yPos = yPos + 25
+		  Var pagewidthMinusMargin As Double = (pageWidth - margin)
+		  g.DrawLine(margin, yPos, pagewidthMinusMargin, yPos)
 		  
-		  Return yPos
+		  yPos = yPos + 25 // ADD to move down
+		  System.DebugLog("After adding 25, final yPos: " + yPos.ToString)
+		  
+		  System.DebugLog("RenderHeader COMPLETE - returning yPos: " + yPos.ToString)
+		  return yPos
 		End Function
 	#tag EndMethod
 
@@ -1271,10 +1579,10 @@ Protected Class ReportGenerator
 		  
 		  Var excessMessage As String
 		  If methodsWithManyParams.Count = 0 Then
-		    excessMessage = "✓ No methods exceed 5 parameters"
+		    excessMessage = "--> No methods exceed 5 parameters"
 		    g.DrawingColor = Color.RGB(0, 128, 0)
 		  Else
-		    excessMessage = "⚠ " + methodsWithManyParams.Count.ToString + " method(s) exceed 5 parameters"
+		    excessMessage = "--> " + methodsWithManyParams.Count.ToString + " method(s) exceed 5 parameters"
 		    g.DrawingColor = Color.RGB(200, 100, 0)
 		  End If
 		  g.DrawText(excessMessage, margin + 20, currentY)
@@ -1340,6 +1648,111 @@ Protected Class ReportGenerator
 		  End If
 		  
 		  Return currentY + lineHeight
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderParameterComplexityDetailsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
+		  //Private Function RenderParameterComplexityDetailsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
+		  
+		  g.FontSize = 12
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("PARAMETER COMPLEXITY", margin, yPos)
+		  g.Bold = False
+		  yPos = yPos + lineHeight + 10
+		  
+		  // Check page break before content
+		  yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		  
+		  g.FontSize = 10
+		  
+		  // Get parameter complexity data
+		  Var avgParams As Double = analyzer.GetAverageParametersPerMethod()
+		  Var maxParams As Integer = analyzer.GetMaxParameters()
+		  Var methodsExceeding As Integer = analyzer.GetMethodsExceedingParameterThreshold(5)
+		  Var optionalParams As Integer = analyzer.GetTotalOptionalParameters()
+		  
+		  // Draw summary statistics
+		  g.DrawingColor = Color.Black
+		  g.DrawText("Average Parameters per Method: " + avgParams.ToString("0.0"), margin, yPos)
+		  yPos = yPos + lineHeight
+		  g.DrawText("Maximum Parameters: " + maxParams.ToString, margin, yPos)
+		  yPos = yPos + lineHeight
+		  
+		  // Highlight if concerning
+		  If methodsExceeding > 0 Then
+		    g.DrawingColor = Color.RGB(200, 100, 0)
+		    g.DrawText("--> " + methodsExceeding.ToString + " method(s) exceed 5 parameters", margin, yPos)
+		    g.DrawingColor = Color.Black
+		  End If
+		  yPos = yPos + lineHeight
+		  
+		  g.DrawText("Total Optional Parameters: " + optionalParams.ToString, margin, yPos)
+		  yPos = yPos + lineHeight + 10
+		  
+		  // Check page break before methods list
+		  yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		  
+		  // Get methods with high parameter counts
+		  Var highParamMethods() As CodeElement = analyzer.GetMethodsWithHighParameterCount(5)
+		  
+		  If highParamMethods.Count > 0 Then
+		    g.Bold = True
+		    g.DrawingColor = Color.RGB(200, 100, 0)
+		    g.DrawText("Methods with > 5 Parameters:", margin, yPos)
+		    g.Bold = False
+		    yPos = yPos + lineHeight + 5
+		    
+		    // Check page break before list
+		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    
+		    g.FontSize = 9
+		    g.DrawingColor = Color.RGB(80, 80, 80)
+		    
+		    For Each method As CodeElement In highParamMethods
+		      // Estimate height for this method entry (method name + parameters line)
+		      Var estimatedHeight As Double = lineHeight * 3  // Method name + parameters + spacing
+		      
+		      // Check if we need a page break before rendering this item
+		      If (yPos + estimatedHeight) > (pageHeight - bottomMargin) Then
+		        yPos = CheckPageBreak(g, yPos + estimatedHeight, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		      End If
+		      
+		      // Draw method name
+		      g.DrawText("  • " + method.FullPath + " (" + method.ParameterCount.ToString + " parameters)", margin + 10, yPos)
+		      yPos = yPos + lineHeight
+		      
+		      // Draw parameter details if available
+		      If method.Parameters.Trim <> "" Then
+		        g.FontSize = 8
+		        g.DrawingColor = Color.RGB(100, 100, 100)
+		        
+		        // Wrap parameters text if too long
+		        Var maxWidth As Double = pageWidth - (margin * 2) - 30
+		        Var paramLines() As String = WrapText(g, "Parameters: (" + method.Parameters + ")", maxWidth)
+		        
+		        For Each line As String In paramLines
+		          // Check page break for each parameter line
+		          If (yPos + lineHeight) > (pageHeight - bottomMargin) Then
+		            yPos = CheckPageBreak(g, yPos + lineHeight, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		          End If
+		          
+		          g.DrawText("    " + line, margin + 20, yPos)
+		          yPos = yPos + lineHeight
+		        Next
+		        
+		        g.FontSize = 9
+		        g.DrawingColor = Color.RGB(80, 80, 80)
+		      End If
+		      
+		      yPos = yPos + 5  // Small spacing between methods
+		    Next
+		  End If
+		  
+		  Return yPos
+		  
 		  
 		End Function
 	#tag EndMethod
@@ -1842,48 +2255,82 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
-		Private Function RenderSingleCodeSmell(g As Graphics, smell As CodeSmell, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
-		  // Private Function RenderSingleCodeSmell(g As Graphics, smell As CodeSmell, pageWidth As Integer, margin As Double, lineHeight As Double, yPos As Double) As Double
+		Private Function RenderSingleCodeSmell(g As Graphics, smell As CodeSmell, margin As Double, lineHeight As Double, yPos As Double, pageWidth As Integer) As Double
+		  //Private Function RenderSingleCodeSmell(g As Graphics, smell As CodeSmell, margin As Double, lineHeight As Double, yPos As Double, pageWidth As Integer) As Double
 		  
-		  ' Render a single code smell with formatting
+		  Var severityEmoji As String = smell.GetSeverityEmoji()
+		  Var severityColor As Color = smell.GetSeverityColor()
 		  
-		  ' Element path with severity indicator
-		  g.FontSize = 11
-		  g.Bold = True
-		  g.DrawingColor = smell.GetSeverityColor()
-		  g.DrawText("• " + smell.SmellType, margin + 20, yPos)
-		  yPos = yPos + lineHeight + 2
-		  
-		  ' Location
+		  // Draw severity indicator with emoji
 		  g.FontSize = 10
-		  g.Bold = False
+		  g.DrawingColor = severityColor
+		  g.DrawText(severityEmoji, margin, yPos)
+		  
+		  // Draw smell type in bold
+		  g.Bold = True
 		  g.DrawingColor = Color.Black
-		  g.DrawText("  " + smell.Element.FullPath, margin + 25, yPos)
+		  g.DrawText(smell.SmellType, margin + 30, yPos)
+		  g.Bold = False
 		  yPos = yPos + lineHeight + 2
 		  
-		  ' Description
+		  // Draw affected element/method (indented)
 		  g.FontSize = 9
 		  g.DrawingColor = Color.RGB(80, 80, 80)
-		  Var wrappedDesc() As String = WrapText(g, smell.Description, pageWidth - margin - 60)
-		  For Each line As String In wrappedDesc
-		    g.DrawText("  " + line, margin + 25, yPos)
-		    yPos = yPos + lineHeight
-		  Next
 		  
-		  ' Details
-		  g.DrawingColor = Color.RGB(100, 100, 100)
-		  Var wrappedDetails() As String = WrapText(g, smell.Details, pageWidth - margin - 60)
-		  For Each line As String In wrappedDetails
-		    g.DrawText("  " + line, margin + 25, yPos)
-		    yPos = yPos + lineHeight
-		  Next
+		  // Get location from Element.FullPath or MethodName
+		  Var location As String = smell.MethodName
+		  var mFilename as String 
+		  If location.Trim = "" And smell.Element <> Nil Then
+		    location = smell.Element.FullPath
+		    mFilename = smell.Element.FileName
+		  End If
 		  
-		  ' Recommendation
-		  g.DrawingColor = Color.RGB(0, 100, 150)
-		  g.DrawText("  --> " + smell.Recommendation, margin + 25, yPos)
-		  yPos = yPos + lineHeight + 10
+		  If location.Trim <> "" Then
+		    g.DrawText("   Method: " + mFilename, margin + 10, yPos)
+		    yPos = yPos + lineHeight
+		    g.DrawText("   Location: " + location, margin + 10, yPos)
+		    yPos = yPos + lineHeight
+		    
+		  End If
+		  
+		  // Draw description (wrapped, indented)
+		  If smell.Description.Trim <> "" Then
+		    g.DrawingColor = Color.RGB(60, 60, 60)
+		    Var maxWidth As Double = pageWidth - (margin * 2) - 20
+		    Var descriptionLines() As String = WrapText(g, smell.Description, maxWidth)
+		    For Each line As String In descriptionLines
+		      g.DrawText("   " + line, margin + 10, yPos)
+		      yPos = yPos + lineHeight
+		    Next
+		  End If
+		  
+		  // Draw details if available
+		  If smell.Details.Trim <> "" Then
+		    g.DrawingColor = Color.RGB(100, 100, 100)
+		    g.FontSize = 8
+		    g.DrawText("   " + smell.Details, margin + 10, yPos)
+		    g.FontSize = 9
+		    yPos = yPos + lineHeight
+		  End If
+		  
+		  // Add recommendation if available
+		  If smell.Recommendation.Trim <> "" Then
+		    g.DrawingColor = Color.RGB(0, 100, 0)
+		    g.Italic = True
+		    Var maxWidth As Double = pageWidth - (margin * 2) - 20
+		    Var recLines() As String = WrapText(g, "→ " + smell.Recommendation, maxWidth)
+		    For Each line As String In recLines
+		      g.DrawText("   " + line, margin + 10, yPos)
+		      yPos = yPos + lineHeight
+		    Next
+		    g.Italic = False
+		  End If
+		  
+		  // Spacing after this smell
+		  yPos = yPos + 10
 		  
 		  Return yPos
+		  
 		End Function
 	#tag EndMethod
 
@@ -2045,6 +2492,17 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
+		Private Function RenderTopComplexMethodsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
+		  // Private Function RenderTopComplexMethodsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
+		  // Just call the regular function and check for page break after
+		  yPos = RenderTopComplexMethods(g, analyzer, margin, lineHeight, yPos)
+		  yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		  Return yPos
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
 		Private Function RenderUnusedByType(g As Graphics, unusedElements() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
 		  // Render unused elements grouped by type
 		  
@@ -2119,6 +2577,51 @@ Protected Class ReportGenerator
 		  End If
 		  
 		  Return yPos
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Private Function RenderUnusedElementsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
+		  // Private Function RenderUnusedElementsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
+		  Var unused() As CodeElement = analyzer.GetUnusedElements()
+		  
+		  // Section header
+		  g.FontSize = 14
+		  g.Bold = True
+		  g.DrawingColor = Color.Black
+		  g.DrawText("UNUSED ELEMENTS (" + unused.Count.ToString + ")", margin, yPos)
+		  yPos = yPos + 30
+		  
+		  g.FontSize = 10
+		  g.Bold = False
+		  
+		  For Each element As CodeElement In unused
+		    // Check for page break
+		    If (yPos + 30) > (pageHeight - bottomMargin) Then
+		      g.NextPage
+		      currentPage = currentPage + 1
+		      g.DrawingColor = Color.White
+		      g.FillRectangle(0, 0, pageWidth, pageHeight)
+		      yPos = 120
+		      
+		      g.FontSize = 12
+		      g.Bold = True
+		      g.DrawingColor = Color.RGB(100, 100, 100)
+		      g.DrawText("UNUSED ELEMENTS (continued)", margin, yPos)
+		      yPos = yPos + 25
+		      g.FontSize = 10
+		      g.Bold = False
+		      g.DrawingColor = Color.Black
+		    End If
+		    
+		    // Render element
+		    g.DrawText("• " + element.ElementType + ": " + element.Name, margin, yPos)
+		    yPos = yPos + lineHeight + 2
+		  Next
+		  
+		  yPos = yPos + 20
+		  Return yPos
+		  
 		End Function
 	#tag EndMethod
 

@@ -346,7 +346,7 @@ Protected Module CodeCleanWindowHelpers
 		  
 		  output = output + "═══════════════════════════════════════" + EndOfLine
 		  output = output + "Scan completed successfully!" + EndOfLine
-		  output = output + "Use 'Generate Flowchart PDF' to visualize." + EndOfLine
+		  output = output + "Use 'Export Scan Results' to see the PDF." + EndOfLine
 		  output = output + "═══════════════════════════════════════" + EndOfLine
 		  
 		  Return output
@@ -356,6 +356,7 @@ Protected Module CodeCleanWindowHelpers
 	#tag Method, Flags = &h21
 		Private Function BuildReportHeader() As String
 		  // Generate the report header
+		  // Add extra height buffer to prevent cutoff
 		  
 		  Var output As String = ""
 		  
@@ -440,21 +441,88 @@ Protected Module CodeCleanWindowHelpers
 
 	#tag Method, Flags = &h21
 		Private Function BuildUnusedElementsSection(analyzer As ProjectAnalyzer) As String
-		  // Generate the unused elements section
-		  
+		  // Function BuildUnusedElementsSection(analyzer As ProjectAnalyzer) As String
 		  Var output As String = ""
 		  
-		  Var unused() As CodeElement = analyzer.GetUnusedElements()
+		  // Get unused elements
+		  Var unusedElements() As CodeElement = analyzer.GetUnusedElements()
 		  
-		  If unused.Count = 0 Then
+		  output = output + EndOfLine
+		  output = output + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" + EndOfLine
+		  output = output + "POTENTIALLY UNUSED ITEMS" + EndOfLine
+		  output = output + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" + EndOfLine
+		  output = output + EndOfLine
+		  
+		  If unusedElements.Count = 0 Then
 		    output = output + "✓ Great! No unused code elements found." + EndOfLine
-		  Else
-		    output = output + "⚠ Found " + unused.Count.ToString + " UNUSED elements:" + EndOfLine
-		    output = output + EndOfLine
-		    output = output + BuildUnusedByTypeList(unused)
+		    Return output
 		  End If
 		  
+		  // Group by type
+		  Var unusedClasses() As CodeElement
+		  Var unusedModules() As CodeElement
+		  Var unusedMethods() As CodeElement
+		  Var unusedProperties() As CodeElement
+		  
+		  For Each element As CodeElement In unusedElements
+		    Select Case element.ElementType
+		    Case "CLASS"
+		      unusedClasses.Add(element)
+		    Case "MODULE"
+		      unusedModules.Add(element)
+		    Case "METHOD"
+		      unusedMethods.Add(element)
+		    Case "PROPERTY", "VARIABLE"
+		      unusedProperties.Add(element)
+		    End Select
+		  Next
+		  
+		  // Display classes
+		  If unusedClasses.Count > 0 Then
+		    Var classCountStr As String = unusedClasses.Count.ToString
+		    output = output + "UNUSED CLASSES (" + classCountStr + "):" + EndOfLine
+		    For Each element As CodeElement In unusedClasses
+		      output = output + "  • " + element.Name + EndOfLine
+		    Next
+		    output = output + EndOfLine
+		  End If
+		  
+		  // Display modules
+		  If unusedModules.Count > 0 Then
+		    Var moduleCountStr As String = unusedModules.Count.ToString
+		    output = output + "UNUSED MODULES (" + moduleCountStr + "):" + EndOfLine
+		    For Each element As CodeElement In unusedModules
+		      output = output + "  • " + element.Name + EndOfLine
+		    Next
+		    output = output + EndOfLine
+		  End If
+		  
+		  // Display methods
+		  If unusedMethods.Count > 0 Then
+		    Var methodCountStr As String = unusedMethods.Count.ToString
+		    output = output + "UNUSED METHODS (" + methodCountStr + "):" + EndOfLine
+		    For Each element As CodeElement In unusedMethods
+		      output = output + "  • " + element.FullPath + EndOfLine
+		    Next
+		    output = output + EndOfLine
+		  End If
+		  
+		  // Display properties
+		  If unusedProperties.Count > 0 Then
+		    Var propCountStr As String = unusedProperties.Count.ToString
+		    output = output + "UNUSED PROPERTIES (" + propCountStr + "):" + EndOfLine
+		    For Each element As CodeElement In unusedProperties
+		      output = output + "  • " + element.FullPath + EndOfLine
+		    Next
+		    output = output + EndOfLine
+		  End If
+		  
+		  // Summary
+		  output = output + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" + EndOfLine
+		  output = output + EndOfLine
+		  
 		  Return output
+		  
 		End Function
 	#tag EndMethod
 
@@ -487,8 +555,34 @@ Protected Module CodeCleanWindowHelpers
 		  
 		  Var output As String = ""
 		  
-		  output = output + smell.GetSeverityEmoji() + " " + smell.SmellType + ": " + smell.Element.FullPath + EndOfLine
-		  output = output + "   " + smell.Description + EndOfLine
+		  
+		  Var smellEmoji As String = smell.GetSeverityEmoji() 
+		  
+		  output = output + smellEmoji+ " " + smell.SmellType + ": " + EndOfLine
+		  
+		  If smell.SmellType.Trim.IndexOf("class", ComparisonOptions.CaseInsensitive) <> -1 Then
+		    output = output + " Class:  " + smell.Element.Name + EndOfLine
+		  ElseIf smell.SmellType.Trim.IndexOf("envy", ComparisonOptions.CaseInsensitive) <> -1 Then
+		    output = output + " Module Name:  " + smell.Element.ModuleName + EndOfLine
+		    output = output + " Element Name:  " + smell.Element.Name + EndOfLine
+		    
+		  ElseIf smell.SmellType.Trim.IndexOf("magic", ComparisonOptions.CaseInsensitive) <> -1 Then
+		    output = output + "   " + smell.Element.Name + EndOfLine
+		    
+		  ElseIf smell.SmellType.Trim.IndexOf("long", ComparisonOptions.CaseInsensitive) <> -1 Then
+		    output = output + " Module Name:  " + smell.Element.ModuleName + EndOfLine
+		    output = output + " Element Name:  " + smell.Element.Name + EndOfLine
+		    
+		    
+		  ElseIf smell.SmellType.Trim.IndexOf("deep", ComparisonOptions.CaseInsensitive) <> -1 Then
+		    output = output + " Module Name:  " + smell.Element.ModuleName + EndOfLine
+		    output = output + " Element Name:  " + smell.Element.Name + EndOfLine
+		    
+		  ElseIf smell.SmellType.Trim.IndexOf("dead", ComparisonOptions.CaseInsensitive) <> -1 Then
+		    output = output + " Method Name:  " + smell.MethodName + EndOfLine
+		  End If
+		  
+		  
 		  output = output + "   " + smell.Details + EndOfLine
 		  output = output + "   → " + smell.Recommendation + EndOfLine
 		  

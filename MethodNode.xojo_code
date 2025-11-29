@@ -1,74 +1,35 @@
 #tag Class
-Protected Class CodeSmell
-	#tag Method, Flags = &h0
-		Function GetSeverityColor() As Color
-		  Select Case Severity
-		  Case "CRITICAL"
-		    Return Color.RGB(200, 0, 0)  // Red
-		  Case "HIGH"
-		    Return Color.RGB(220, 100, 0)  // Orange
-		  Case "MEDIUM"
-		    Return Color.RGB(180, 180, 0)  // Yellow
-		  Case "LOW"
-		    Return Color.RGB(100, 150, 100)  // Green-gray
-		  Else
-		    Return Color.Black
-		  End Select
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Function GetSeverityEmoji() As String
-		  Select Case Severity
-		  Case "CRITICAL"
-		    Return "🔴"
-		  Case "HIGH"
-		    Return "🟠"
-		  Case "MEDIUM"
-		    Return "🟡"
-		  Case "LOW"
-		    Return "🔵"
-		  Else
-		    Return "⚪"
-		  End Select
-		End Function
-	#tag EndMethod
-
-
+Protected Class MethodNode
 	#tag Property, Flags = &h0
-		Description As String
+		CalledBy As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		Details As String
+		Complexity As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		Element As CodeElement
+		FullPath As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		lineNumber As Integer
+		LOC As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		MethodName As String
+		Name As String
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		MetricValue As Double
+		NodeColor As Color = Color.Green
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		Recommendation As String
+		X As Integer
 	#tag EndProperty
 
 	#tag Property, Flags = &h0
-		Severity As String
-	#tag EndProperty
-
-	#tag Property, Flags = &h0
-		SmellType As String
+		Y As Integer
 	#tag EndProperty
 
 
@@ -114,55 +75,15 @@ Protected Class CodeSmell
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="SmellType"
+			Name="FullPath"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
 			Type="String"
-			EditorType="MultiLineEditor"
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="Severity"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="String"
-			EditorType="MultiLineEditor"
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="Description"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="String"
-			EditorType="MultiLineEditor"
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="Details"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="String"
-			EditorType="MultiLineEditor"
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="Recommendation"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="String"
-			EditorType="MultiLineEditor"
-		#tag EndViewProperty
-		#tag ViewProperty
-			Name="MetricValue"
-			Visible=false
-			Group="Behavior"
-			InitialValue=""
-			Type="Double"
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="lineNumber"
+			Name="Complexity"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
@@ -170,11 +91,35 @@ Protected Class CodeSmell
 			EditorType=""
 		#tag EndViewProperty
 		#tag ViewProperty
-			Name="MethodName"
+			Name="LOC"
 			Visible=false
 			Group="Behavior"
 			InitialValue=""
-			Type="String"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="CalledBy"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="X"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Y"
+			Visible=false
+			Group="Behavior"
+			InitialValue=""
+			Type="Integer"
 			EditorType=""
 		#tag EndViewProperty
 	#tag EndViewBehavior

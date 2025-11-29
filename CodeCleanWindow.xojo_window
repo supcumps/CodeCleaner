@@ -24,7 +24,7 @@ Begin DesktopWindow CodeCleanWindow
    Title           =   "Code Analyzer - Scan and Visualize"
    Type            =   0
    Visible         =   True
-   Width           =   828
+   Width           =   956
    Begin DesktopBevelButton btnScan
       Active          =   False
       AllowAutoDeactivate=   True
@@ -120,7 +120,7 @@ Begin DesktopWindow CodeCleanWindow
       UnicodeMode     =   1
       ValidationMask  =   ""
       Visible         =   True
-      Width           =   743
+      Width           =   871
    End
    Begin DesktopImageViewer ImageViewer1
       Active          =   False
@@ -131,7 +131,7 @@ Begin DesktopWindow CodeCleanWindow
       Image           =   1280350207
       Index           =   -2147483648
       InitialParent   =   ""
-      Left            =   722
+      Left            =   850
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -160,7 +160,7 @@ Begin DesktopWindow CodeCleanWindow
       BevelStyle      =   0
       Bold            =   False
       ButtonStyle     =   0
-      Caption         =   "Export Results"
+      Caption         =   "Export Scan Results"
       CaptionAlignment=   3
       CaptionDelta    =   0
       CaptionPosition =   1
@@ -177,7 +177,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   43
+      Left            =   212
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -200,116 +200,6 @@ Begin DesktopWindow CodeCleanWindow
       _mInitialParent =   ""
       _mName          =   ""
       _mPanelIndex    =   0
-   End
-   Begin DesktopBevelButton btnGenerateFlowchart
-      Active          =   False
-      AllowAutoDeactivate=   True
-      AllowFocus      =   True
-      AllowTabStop    =   True
-      BackgroundColor =   &c00000000
-      BevelStyle      =   0
-      Bold            =   False
-      ButtonStyle     =   0
-      Caption         =   "Generate Flowchart PDF"
-      CaptionAlignment=   3
-      CaptionDelta    =   0
-      CaptionPosition =   1
-      Enabled         =   False
-      FontName        =   "System"
-      FontSize        =   0.0
-      FontUnit        =   0
-      HasBackgroundColor=   False
-      Height          =   22
-      Icon            =   0
-      IconAlignment   =   0
-      IconDeltaX      =   0
-      IconDeltaY      =   0
-      Index           =   -2147483648
-      InitialParent   =   ""
-      Italic          =   False
-      Left            =   531
-      LockBottom      =   False
-      LockedInPosition=   False
-      LockLeft        =   True
-      LockRight       =   False
-      LockTop         =   True
-      MenuStyle       =   0
-      PanelIndex      =   0
-      Scope           =   2
-      TabIndex        =   4
-      TabPanelIndex   =   0
-      TextColor       =   &c00000000
-      Tooltip         =   ""
-      Top             =   20
-      Transparent     =   False
-      Underline       =   False
-      Value           =   False
-      Visible         =   True
-      Width           =   179
-      _mIndex         =   0
-      _mInitialParent =   ""
-      _mName          =   ""
-      _mPanelIndex    =   0
-   End
-   Begin DesktopPopupMenu popLayoutType
-      AllowAutoDeactivate=   True
-      Bold            =   False
-      Enabled         =   True
-      FontName        =   "System"
-      FontSize        =   0.0
-      FontUnit        =   0
-      Height          =   22
-      Index           =   -2147483648
-      InitialValue    =   "Simple Layout\nCompact Layout\nHierarchical Layout"
-      Italic          =   False
-      Left            =   531
-      LockBottom      =   False
-      LockedInPosition=   False
-      LockLeft        =   True
-      LockRight       =   False
-      LockTop         =   True
-      Scope           =   2
-      SelectedRowIndex=   0
-      TabIndex        =   5
-      TabPanelIndex   =   0
-      TabStop         =   True
-      Tooltip         =   ""
-      Top             =   88
-      Transparent     =   False
-      Underline       =   False
-      Visible         =   True
-      Width           =   179
-   End
-   Begin DesktopCheckBox chkShowRelationships
-      AllowAutoDeactivate=   True
-      Bold            =   False
-      Caption         =   "Show Relationships"
-      Enabled         =   True
-      FontName        =   "System"
-      FontSize        =   0.0
-      FontUnit        =   0
-      Height          =   20
-      Index           =   -2147483648
-      InitialParent   =   ""
-      Italic          =   False
-      Left            =   531
-      LockBottom      =   False
-      LockedInPosition=   False
-      LockLeft        =   True
-      LockRight       =   False
-      LockTop         =   True
-      Scope           =   2
-      TabIndex        =   6
-      TabPanelIndex   =   0
-      TabStop         =   True
-      Tooltip         =   ""
-      Top             =   54
-      Transparent     =   False
-      Underline       =   False
-      Value           =   True
-      Visible         =   True
-      VisualState     =   0
-      Width           =   153
    End
    Begin DesktopBevelButton btnRefactoringSuggestions
       Active          =   False
@@ -337,7 +227,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   234
+      Left            =   403
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -387,7 +277,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   43
+      Left            =   403
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -437,7 +327,7 @@ Begin DesktopWindow CodeCleanWindow
       Index           =   -2147483648
       InitialParent   =   ""
       Italic          =   False
-      Left            =   234
+      Left            =   212
       LockBottom      =   False
       LockedInPosition=   False
       LockLeft        =   True
@@ -456,6 +346,106 @@ Begin DesktopWindow CodeCleanWindow
       Value           =   False
       Visible         =   True
       Width           =   179
+      _mIndex         =   0
+      _mInitialParent =   ""
+      _mName          =   ""
+      _mPanelIndex    =   0
+   End
+   Begin DesktopBevelButton btnGenerateDependencyGraph
+      Active          =   False
+      AllowAutoDeactivate=   True
+      AllowFocus      =   True
+      AllowTabStop    =   True
+      BackgroundColor =   &c00000000
+      BevelStyle      =   0
+      Bold            =   False
+      ButtonStyle     =   0
+      Caption         =   "Dependency Graph (As PNG)"
+      CaptionAlignment=   3
+      CaptionDelta    =   0
+      CaptionPosition =   1
+      Enabled         =   False
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      HasBackgroundColor=   False
+      Height          =   22
+      Icon            =   0
+      IconAlignment   =   0
+      IconDeltaX      =   0
+      IconDeltaY      =   0
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   637
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MenuStyle       =   0
+      PanelIndex      =   0
+      Scope           =   2
+      TabIndex        =   10
+      TabPanelIndex   =   0
+      TextColor       =   &c00000000
+      Tooltip         =   ""
+      Top             =   54
+      Transparent     =   False
+      Underline       =   False
+      Value           =   False
+      Visible         =   True
+      Width           =   201
+      _mIndex         =   0
+      _mInitialParent =   ""
+      _mName          =   ""
+      _mPanelIndex    =   0
+   End
+   Begin DesktopBevelButton btnGenerateInteractiveGraph
+      Active          =   False
+      AllowAutoDeactivate=   True
+      AllowFocus      =   True
+      AllowTabStop    =   True
+      BackgroundColor =   &c00000000
+      BevelStyle      =   0
+      Bold            =   False
+      ButtonStyle     =   0
+      Caption         =   "Interactive Dependency Graph"
+      CaptionAlignment=   3
+      CaptionDelta    =   0
+      CaptionPosition =   1
+      Enabled         =   False
+      FontName        =   "System"
+      FontSize        =   0.0
+      FontUnit        =   0
+      HasBackgroundColor=   False
+      Height          =   22
+      Icon            =   0
+      IconAlignment   =   0
+      IconDeltaX      =   0
+      IconDeltaY      =   0
+      Index           =   -2147483648
+      InitialParent   =   ""
+      Italic          =   False
+      Left            =   637
+      LockBottom      =   False
+      LockedInPosition=   False
+      LockLeft        =   True
+      LockRight       =   False
+      LockTop         =   True
+      MenuStyle       =   0
+      PanelIndex      =   0
+      Scope           =   2
+      TabIndex        =   11
+      TabPanelIndex   =   0
+      TextColor       =   &c00000000
+      Tooltip         =   ""
+      Top             =   88
+      Transparent     =   False
+      Underline       =   False
+      Value           =   False
+      Visible         =   True
+      Width           =   201
       _mIndex         =   0
       _mInitialParent =   ""
       _mName          =   ""
@@ -513,9 +503,12 @@ End
 		  // Build relationships between elements
 		  mAnalyzer.BuildRelationships(folder)
 		  
+		  // 🔥 DETECT UNUSED CODE - THIS WAS MISSING!
+		  Var deadCode() As CodeSmell = mAnalyzer.DetectDeadCode()
+		  
 		  System.DebugLog("=== ELEMENT TYPE CHECK ===")
 		  
-		  all()  = mAnalyzer.GetAllElements()
+		  all() = mAnalyzer.GetAllElements()
 		  Var classes() As CodeElement = mAnalyzer.GetClassElements()
 		  Var modules() As CodeElement = mAnalyzer.GetModuleElements()
 		  Var methods() As CodeElement = mAnalyzer.GetMethodElements()
@@ -529,7 +522,6 @@ End
 		  System.DebugLog("Methods with code: " + methodsWithCode.ToString + " of " + methods.Count.ToString)
 		  System.DebugLog("Methods with calls: " + methods.Count.ToString)  // Will show how many have CallsTo populated
 		  
-		  
 		  System.DebugLog("Total: " + all.Count.ToString)
 		  System.DebugLog("Classes: " + classes.Count.ToString)
 		  System.DebugLog("Modules: " + modules.Count.ToString)
@@ -537,18 +529,23 @@ End
 		  
 		  // Show first few elements and their types
 		  For i As Integer = 0 To Min(5, all.Count - 1)
-		    System.DebugLog("Element " + i.ToString + ": " + all(i).Name + " (Type: '" + all(i).ElementType + "')")
+		    Var indexStr As String = i.ToString
+		    Var nameStr As String = all(i).Name
+		    Var typeStr As String = all(i).ElementType
+		    System.DebugLog("Element " + indexStr + ": " + nameStr + " (Type: '" + typeStr + "')")
 		  Next
 		  
 		  // Analyze error handling patterns
 		  mAnalyzer.AnalyzeErrorHandling()
+		  
 		  // DEBUG: Test parameter parsing
 		  System.DebugLog("=== PARAMETER PARSING DEBUG ===")
 		  methods() = mAnalyzer.GetMethodElements
 		  Var testCount As Integer = 0
 		  
 		  For Each method As CodeElement In methods
-		    If method.Code.Trim <> "" And testCount < 5 Then  // Test first 5 methods
+		    Var codeCheck As String = method.Code.Trim
+		    If codeCheck <> "" And testCount < 5 Then  // Test first 5 methods
 		      System.DebugLog("")
 		      System.DebugLog("Method: " + method.FullPath)
 		      System.DebugLog("Code starts with:")
@@ -556,13 +553,15 @@ End
 		      // Show first 3 lines of code
 		      Var lines() As String = method.Code.Split(EndOfLine)
 		      For i As Integer = 0 To Min(2, lines.Count - 1)
-		        System.DebugLog("  Line " + i.ToString + ": " + lines(i))
+		        Var lineNum As String = i.ToString
+		        System.DebugLog("  Line " + lineNum + ": " + lines(i))
 		      Next
 		      
 		      // Test parsing
 		      Var result As Dictionary = mAnalyzer.ParseMethodParameters(method.Code)
 		      Var paramCount As Integer = result.Value("parameterCount")
-		      System.DebugLog("Detected parameters: " + paramCount.ToString)
+		      Var paramCountStr As String = paramCount.ToString
+		      System.DebugLog("Detected parameters: " + paramCountStr)
 		      
 		      testCount = testCount + 1
 		    End If
@@ -577,29 +576,37 @@ End
 		    If method.ParameterCount > 0 Then
 		      methodsWithParams = methodsWithParams + 1
 		      totalParams = totalParams + method.ParameterCount
-		      System.DebugLog("✓ " + method.Name + ": " + method.ParameterCount.ToString + " params")
+		      Var paramCountStr As String = method.ParameterCount.ToString
+		      System.DebugLog("✓ " + method.Name + ": " + paramCountStr + " params")
 		      System.DebugLog("  Parameters: " + method.Parameters)
 		    End If
 		  Next
 		  
 		  System.DebugLog("")
-		  System.DebugLog("Methods with parameters: " + methodsWithParams.ToString)
-		  System.DebugLog("Total parameters: " + totalParams.ToString)
+		  Var methodsWithParamsStr As String = methodsWithParams.ToString
+		  Var totalParamsStr As String = totalParams.ToString
+		  System.DebugLog("Methods with parameters: " + methodsWithParamsStr)
+		  System.DebugLog("Total parameters: " + totalParamsStr)
 		  
 		  // TEST: Check if code is being captured
-		  methods() = manalyzer.GetMethodElements
+		  methods() = mAnalyzer.GetMethodElements
 		  System.DebugLog("=== CODE CAPTURE TEST ===")
-		  System.DebugLog("Total methods found: " + methods.Count.ToString)
+		  Var methodCountStr As String = methods.Count.ToString
+		  System.DebugLog("Total methods found: " + methodCountStr)
 		  
 		  methodsWithCode = 0
 		  For Each method As CodeElement In methods
-		    If method.Code.Trim <> "" Then
+		    Var codeCheck As String = method.Code.Trim
+		    If codeCheck <> "" Then
 		      methodsWithCode = methodsWithCode + 1
-		      System.DebugLog("✅ " + method.Name + " has " + method.Code.Length.ToString + " chars")
+		      Var codeLengthStr As String = method.Code.Length.ToString
+		      System.DebugLog("✅ " + method.Name + " has " + codeLengthStr + " chars")
 		    End If
 		  Next
 		  
-		  System.DebugLog("Methods with code: " + methodsWithCode.ToString + " of " + methods.Count.ToString)
+		  Var withCodeStr As String = methodsWithCode.ToString
+		  Var totalMethodsStr As String = methods.Count.ToString
+		  System.DebugLog("Methods with code: " + withCodeStr + " of " + totalMethodsStr)
 		  
 		  If methodsWithCode = 0 Then
 		    System.DebugLog("❌ NO CODE CAPTURED! Need to update CodeElement and ProjectAnalyzer")
@@ -612,13 +619,15 @@ End
 		  
 		  // Enable the export and flowchart buttons
 		  ExportButton.Enabled = True
-		  btnGenerateFlowchart.Enabled = True
 		  btnRefactoringSuggestions.Enabled = True
 		  GenerateHotSpotsPDFButton.Enabled = True
-		  btnShowAllHotSpots.Enabled =True
+		  btnShowAllHotSpots.Enabled = True
+		  btnGenerateDependencyGraph.Enabled = True
+		  btnGenerateInteractiveGraph.Enabled = True
 		  
 		  Var allElements() As CodeElement = mAnalyzer.GetAllElements()
-		  MessageBox("Scan complete! Found " + allElements.Count.ToString + " code elements.")
+		  Var elementCountStr As String = allElements.Count.ToString
+		  MessageBox("Scan complete! Found " + elementCountStr + " code elements.")
 		End Sub
 	#tag EndEvent
 #tag EndEvents
@@ -642,7 +651,8 @@ End
 		    Try
 		      Var generator As New ReportGenerator
 		      If generator.GenerateAnalysisReportPDF(mAnalyzer, saveFile) Then
-		        MessageBox("PDF report generated successfully!")
+		        MessageBox("PDF report generated successfully! ➡️ " + endofline + saveFile.Name)
+		        saveFile.Open()
 		      Else
 		        MessageBox("Error generating PDF report. Check the console for details.")
 		      End If
@@ -653,94 +663,6 @@ End
 		  
 		  
 		  
-		  
-		  
-		  'Var timestamp As String = dt.Year.ToString + "-" + _
-		  'Format(dt.Month, "00") + "-" + _
-		  'Format(dt.Day, "00") + "_" + _
-		  'Format(dt.Hour, "00") + Format(dt.Minute, "00")
-		  '
-		  'Var saveFile As FolderItem = FolderItem.ShowSaveFileDialog("", "UnusedCode_" + timestamp + ".txt")
-		  'If saveFile <> Nil Then
-		  'Try
-		  'Var tos As TextOutputStream = TextOutputStream.Create(saveFile)
-		  'tos.Write(txtResults.Text)
-		  'tos.Close
-		  'MessageBox("Results exported successfully!")
-		  'Catch e As IOException
-		  'MessageBox("Error saving file: " + e.Message)
-		  'End Try
-		  'End If
-		End Sub
-	#tag EndEvent
-#tag EndEvents
-#tag Events btnGenerateFlowchart
-	#tag Event
-		Sub Pressed()
-		  If mAnalyzer = Nil Then
-		    MessageBox("Please scan a project first!")
-		    Return
-		  End If
-		  
-		  // Get selected layout type
-		  Var layoutType As String = "Simple"
-		  If popLayoutType.SelectedRowIndex = 1 Then
-		    layoutType = "Compact"
-		  ElseIf popLayoutType.SelectedRowIndex = 2 Then
-		    layoutType = "Hierarchical"
-		  End If
-		  
-		  // Get relationship option
-		  Var includeRelationships As Boolean = chkShowRelationships.Value
-		  
-		  // Ask user what to visualize
-		  Var dlg As New MessageDialog
-		  dlg.Title = "Select Elements to Visualize"
-		  dlg.Message = "What would you like to include in the flowchart?"
-		  dlg.ActionButton.Caption = "All Elements"
-		  dlg.AlternateActionButton.Caption = "Unused Only"
-		  dlg.CancelButton.Caption = "Cancel"
-		  
-		  Var result As MessageDialogButton = dlg.ShowModal
-		  
-		  If result = dlg.CancelButton Then
-		    Return
-		  End If
-		  
-		  // Get elements to visualize
-		  Var elementsToShow() As CodeElement
-		  If result = dlg.AlternateActionButton Then
-		    elementsToShow = mAnalyzer.GetUnusedElements()
-		    If elementsToShow.Count = 0 Then
-		      MessageBox("No unused elements found!")
-		      Return
-		    End If
-		  Else
-		    elementsToShow = mAnalyzer.AllElements
-		  End If
-		  
-		  // Get save location
-		  Var dt As DateTime = DateTime.Now
-		  Var timestamp As String = dt.Year.ToString + "-" + _
-		  Format(dt.Month, "00") + "-" + _
-		  Format(dt.Day, "00") + "_" + _
-		  Format(dt.Hour, "00") + Format(dt.Minute, "00")
-		  
-		  Var saveFile As FolderItem = FolderItem.ShowSaveFileDialog("application/pdf", "Flowchart_" + timestamp + ".pdf")
-		  If saveFile = Nil Then
-		    Return
-		  End If
-		  
-		  // Generate the flowchart
-		  Var generator As New FlowchartGenerator
-		  
-		  txtResults.Text = txtResults.Text + EndOfLine + "Generating flowchart PDF..." + EndOfLine
-		  
-		  If generator.GenerateFlowchartPDF(elementsToShow, saveFile, layoutType, includeRelationships) Then
-		    MessageBox("Flowchart PDF generated successfully!")
-		  Else
-		    MessageBox("Error generating flowchart PDF. Check the console for details.")
-		  End If
 		End Sub
 	#tag EndEvent
 #tag EndEvents
@@ -779,7 +701,7 @@ End
 		  // Generate the PDF
 		  Var generator As New ReportGenerator
 		  If generator.GenerateRefactoringSuggestionsReport(mAnalyzer, saveFile) Then
-		    MessageBox("Refactoring suggestions report generated successfully!")
+		    MessageBox("Refactoring suggestions report generated successfully!  ➡️ " + endofline + dlg.SuggestedFileName) 
 		    saveFile.Open()
 		  Else
 		    MessageBox("Error generating refactoring suggestions report.")
@@ -845,8 +767,11 @@ End
 		    
 		    generator.GenerateHotSpotsReportPDF(hotSpots, f.NativePath, projectName)
 		    
-		    MessageBox("Hot Spots report generated successfully!" + EndOfLine + _
+		    MessageBox("Hot Spots report generated successfully! ➡️ " + EndOfLine + _
+		    dlg.Title  + EndOfLine + _
 		    "Found " + hotSpots.Count.ToString + " hot spots")
+		    dlg.Result.Open
+		    
 		  End If
 		  
 		End Sub
@@ -886,6 +811,40 @@ End
 		  // Optional: Scroll to top
 		  txtResults.SelectionStart = 0
 		  txtResults.SelectionLength = 0
+		  
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events btnGenerateDependencyGraph
+	#tag Event
+		Sub Pressed()
+		  // Private Sub btnGenerateDependencyGraph_Pressed()
+		  // Let user choose where to save
+		  Var dlg As New SelectFolderDialog
+		  dlg.Title = "Select folder to save dependency graph"
+		  dlg.PromptText = "Choose location:"
+		  
+		  Var folder As FolderItem = dlg.ShowModal()
+		  
+		  If folder <> Nil Then
+		    mAnalyzer.GenerateDependencyGraphPNG(folder)
+		  End If
+		  
+		End Sub
+	#tag EndEvent
+#tag EndEvents
+#tag Events btnGenerateInteractiveGraph
+	#tag Event
+		Sub Pressed()
+		  // Private Sub btnGenerateInteractiveGraph_Pressed()
+		  Var dlg As New SelectFolderDialog
+		  dlg.Title = "Select folder to save interactive graph"
+		  
+		  Var folder As FolderItem = dlg.ShowModal()
+		  
+		  If folder <> Nil Then
+		    mAnalyzer.GenerateInteractiveDependencyGraph(folder)
+		  End If
 		  
 		End Sub
 	#tag EndEvent
