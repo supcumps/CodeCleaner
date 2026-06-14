@@ -13,6 +13,7 @@ Protected Module HotSpotsGenerator
 		  
 		  hs.ParameterCount = element.ParameterCount
 		  hs.LinesOfCode = element.LinesOfCode
+  hs.NestingDepth = CalculateNestingDepth(element.Code)
 		  
 		  
 		  
@@ -321,6 +322,37 @@ Protected Module HotSpotsGenerator
 		Untitled As Integer
 	#tag EndProperty
 
+
+	#tag Method, Flags = &h21
+		Private Function CalculateNestingDepth(code As String) As Integer
+		  // Calculates maximum nesting depth of control flow blocks in code.
+		  // Mirrors ProjectAnalyzer.CalculateNestingDepth - kept here to avoid
+		  // a dependency on ProjectAnalyzer from HotSpotsGenerator.
+		  Var lines() As String = code.Split(EndOfLine)
+		  Var maxDepth As Integer = 0
+		  Var currentDepth As Integer = 0
+		  
+		  For Each line As String In lines
+		    Var trimmed As String = line.Trim.Uppercase
+		    
+		    If trimmed.BeginsWith("IF ") Or trimmed.BeginsWith("FOR ") Or _
+		      trimmed.BeginsWith("WHILE ") Or trimmed.BeginsWith("SELECT ") Or _
+		      trimmed.BeginsWith("TRY") Then
+		      currentDepth = currentDepth + 1
+		      If currentDepth > maxDepth Then maxDepth = currentDepth
+		      End If
+		    
+		    If trimmed.BeginsWith("END IF") Or trimmed.BeginsWith("NEXT") Or _
+		      trimmed.BeginsWith("WEND") Or trimmed.BeginsWith("END SELECT") Or _
+		      trimmed.BeginsWith("END TRY") Then
+		      currentDepth = currentDepth - 1
+		    End If
+		  Next
+
+		  Return maxDepth
+		  
+		End Function
+	#tag EndMethod
 
 	#tag ViewBehavior
 		#tag ViewProperty
