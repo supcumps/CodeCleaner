@@ -1,5 +1,11 @@
 #tag Class
 Protected Class ProjectAnalyzer
+	#tag Method, Flags = &h0
+		Sub Constructor()
+		  ElementLookup = New Dictionary
+		End Sub
+	#tag EndMethod
+
 	#tag Method, Flags = &h21
 		Private Sub AnalyzeDeepNesting(method As CodeElement, depth As Integer)
 		  // Private Sub AnalyzeDeepNesting(method As CodeElement, depth As Integer)
