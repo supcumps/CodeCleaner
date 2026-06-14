@@ -376,9 +376,6 @@ Protected Class ProjectAnalyzer
 		    End If
 		  Next
 		  
-		  // Scan all files for relationships
-		  ScanForRelationships()
-		  
 		  // Check what we found
 		  Var allElements() As CodeElement = GetAllElements()
 		  Var methodsWithCalls As Integer = 0
@@ -733,7 +730,8 @@ Protected Class ProjectAnalyzer
 		  Var report As String = ""
 		  
 		  // Count occurrences of each name
-		  For Each element As CodeElement In AllElements
+		  Var allElements() As CodeElement = GetAllElements()
+		  For Each element As CodeElement In allElements
 		    Var name As String = element.Name
 		    If nameCount.HasKey(name) Then
 		      Var count As Integer = nameCount.Value(name)
@@ -744,7 +742,7 @@ Protected Class ProjectAnalyzer
 		  Next
 		  
 		  // Report duplicates
-		  For Each element As CodeElement In AllElements
+		  For Each element As CodeElement In allElements
 		    Var name As String = element.Name
 		    Var count As Integer = nameCount.Value(name)
 		    If count > 1 Then
