@@ -588,7 +588,8 @@ End
 		      Next
 		      
 		      // Test parsing
-		      Var result As Dictionary = mAnalyzer.ParseMethodParameters(method.Code)
+		      Var cp As New CodeParser
+      Var result As Dictionary = cp.ParseMethodParameters(method.Code)
 		      Var paramCount As Integer = result.Value("parameterCount")
 		      Var paramCountStr As String = paramCount.ToString
 		      Logger.Log("Detected parameters: " + paramCountStr)

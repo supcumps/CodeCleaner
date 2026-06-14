@@ -1,0 +1,892 @@
+#tag Class
+Protected Class CodeParser
+	#tag Method, Flags = &h0
+		Sub Constructor()
+		  ElementLookup = New Dictionary
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function GetAllElements() As CodeElement()
+		  Return mElements
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Function FindElementByFullPath(fullPath As String) As CodeElement
+		  If ElementLookup.HasKey(fullPath) Then
+		    Return ElementLookup.Value(fullPath)
+		  End If
+		  Return Nil
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h0
+		Sub ParseFileContent(content As String, fileName As String)
+		  //Private Sub ParseFileContent(content As String, fileName As String)
+		  // Main orchestrator - delegates to focused helper methods
+		  
+		  Var lines() As String = content.Split(EndOfLine)
+		  Var context As New ParsingContext
+		  context.FileName = fileName
+		  
+		  For Each line As String In lines
+		    Var trimmedLine As String = line.Trim
+		    
+		    // Skip empty lines (but keep them in method code if we're in a method)
+		    If trimmedLine = "" Then
+		      AccumulateCodeLine(context, line)
+		      Continue
+		    End If
+		    
+		    // Process the line based on what it declares
+		    If IsModuleDeclaration(trimmedLine) Then
+		      ProcessModuleDeclaration(trimmedLine, context)
+		      
+		    ElseIf IsInterfaceDeclaration(trimmedLine) Then
+		      ProcessInterfaceDeclaration(trimmedLine, context)
+		      
+		    ElseIf IsClassDeclaration(trimmedLine) Then
+		      ProcessClassDeclaration(trimmedLine, context)
+		      
+		    ElseIf IsMethodOrFunctionDeclaration(trimmedLine) Then
+		      ProcessMethodDeclaration(trimmedLine, context)
+		      
+		    ElseIf IsPropertyDeclaration(trimmedLine) Then
+		      ProcessPropertyDeclaration(trimmedLine, context)
+		      
+		    ElseIf IsEndMethodStatement(trimmedLine) Then
+		      FinalizeMethod(context)
+		      
+		    Else
+		      // Regular code line - accumulate if we're in a method
+		      AccumulateCodeLine(context, line)
+		    End If
+		  Next
+		  
+		  // Handle any method still open at end of file
+		  If context.InMethodOrFunction Then
+		    FinalizeMethod(context)
+		  End If
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ProcessSourceFile(item As FolderItem)
+		  Try
+		    Var tis As TextInputStream = TextInputStream.Open(item)
+		    If tis = Nil Then Return
+		    
+		    Var content As String = tis.ReadAll
+		    tis.Close
+		    
+		    ParseFileContent(content, item.Name)
+		    
+		  Catch e As IOException
+		    Logger.Log("Error reading file: " + item.Name + " - " + e.Message)
+		  End Try
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ProcessLine(trimmedLine As String, originalLine As String, context As ParsingContext)
+		  // Private Sub ProcessLine(trimmedLine As String, originalLine As String, context As ParsingContext)
+		  If IsModuleDeclaration(trimmedLine) Then
+		    ProcessModuleDeclaration(trimmedLine, context)
+		    
+		  ElseIf IsInterfaceDeclaration(trimmedLine) Then
+		    ProcessInterfaceDeclaration(trimmedLine, context)
+		    
+		  ElseIf IsClassDeclaration(trimmedLine) Then
+		    ProcessClassDeclaration(trimmedLine, context)
+		    
+		  ElseIf IsMethodOrFunctionDeclaration(trimmedLine) Then
+		    ProcessMethodDeclaration(trimmedLine, context)
+		    
+		  ElseIf IsPropertyDeclaration(trimmedLine) Then
+		    ProcessPropertyDeclaration(trimmedLine, context)
+		    
+		  ElseIf IsEndMethodStatement(trimmedLine) Then
+		    FinalizeMethod(context)
+		    
+		  Else
+		    // Regular code line
+		    If context.InMethodOrFunction Then
+		      context.CurrentMethodCode = context.CurrentMethodCode + originalLine + EndOfLine
+		    End If
+		  End If
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ProcessModuleDeclaration(declaration As String, context As ParsingContext)
+		  // Private Sub ProcessModuleDeclaration(declaration As String, context As ParsingContext)
+		  // Handle module declarations
+		  
+		  context.CurrentModule = ExtractModuleName(declaration)
+		  context.CurrentClass = ""
+		  context.CurrentInterface = ""
+		  
+		  Var fullPath As String = context.CurrentModule
+		  Var element As New CodeElement("MODULE", context.CurrentModule, fullPath, context.FileName)
+		  mElements.Add(element)
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ProcessClassDeclaration(declaration As String, context As ParsingContext)
+		  // Private Sub ProcessClassDeclaration(declaration As String, context As ParsingContext)
+		  // Handle class declarations
+		  
+		  context.CurrentClass = ExtractClassName(declaration)
+		  context.CurrentInterface = ""
+		  
+		  Var fullPath As String = BuildFullPath(context.CurrentModule, "", context.CurrentClass)
+		  Var element As New CodeElement("CLASS", context.CurrentClass, fullPath, context.FileName)
+		  mElements.Add(element)
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ProcessInterfaceDeclaration(declaration As String, context As ParsingContext)
+		  // Private Sub ProcessInterfaceDeclaration(declaration As String, context As ParsingContext)
+		  // Handle interface declarations
+		  
+		  context.CurrentInterface = ExtractInterfaceName(declaration)
+		  context.CurrentClass = context.CurrentInterface
+		  
+		  Var fullPath As String = BuildFullPath(context.CurrentModule, "", context.CurrentInterface)
+		  Var element As New CodeElement("INTERFACE", context.CurrentInterface, fullPath, context.FileName)
+		  mElements.Add(element)
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ProcessMethodDeclaration(declaration As String, context As ParsingContext)
+		  // Private Sub ProcessMethodDeclaration(declaration As String, context As ParsingContext)
+		  Logger.Log(">>> ProcessMethodDeclaration CALLED with: " + declaration)
+		  
+		  // Finalize any previous method that was still open
+		  If context.InMethodOrFunction Then
+		    FinalizeMethod(context)
+		  End If
+		  
+		  Var methodName As String = ExtractMethodName(declaration)
+		  Logger.Log(">>> Method name extracted: " + methodName)
+		  
+		  Var fullPath As String = BuildFullPath(context.CurrentModule, context.CurrentClass, methodName)
+		  Logger.Log(">>> Full path: " + fullPath)
+		  
+		  Var element As New CodeElement("METHOD", methodName, fullPath, context.FileName)
+		  
+		  // Extract parameter information from the signature
+		  ExtractParameterInfo(declaration, element)
+		  
+		  // ADD TO BOTH THE ARRAY AND THE DICTIONARY:
+		  mElements.Add(element)
+		  ElementLookup.Value(fullPath) = element  // ← ADD THIS LINE!
+		  
+		  // Start tracking this method
+		  context.InMethodOrFunction = True
+		  context.CurrentMethodFullPath = fullPath
+		  context.CurrentMethodCode = ""
+		  
+		  Logger.Log(">>> Method declaration processed successfully")
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ProcessPropertyDeclaration(declaration As String, context As ParsingContext)
+		  // Private Sub ProcessPropertyDeclaration(declaration As String, context As ParsingContext)
+		  // Handle property declarations
+		  
+		  Var propertyName As String = ExtractPropertyName(declaration)
+		  Var fullPath As String = BuildFullPath(context.CurrentModule, context.CurrentClass, propertyName)
+		  
+		  Var element As New CodeElement("PROPERTY", propertyName, fullPath, context.FileName)
+		  mElements.Add(element)
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ProcessVariableDeclaration(line As String, currentModule As String, currentClass As String, fileName As String)
+		  Var varName As String = ExtractVariableName(line)
+		  
+		  If varName.Trim <> "" Then
+		    Var fullPath As String = ""
+		    
+		    If currentModule.Trim <> "" And currentClass.Trim <> "" Then
+		      fullPath = currentModule + "." + currentClass + "." + varName
+		    ElseIf currentModule.Trim <> "" Then
+		      fullPath = currentModule + "." + varName
+		    ElseIf currentClass.Trim <> "" Then
+		      fullPath = currentClass + "." + varName
+		    Else
+		      fullPath = varName
+		    End If
+		    
+		    If Not ElementLookup.HasKey(fullPath) Then
+		      Var element As New CodeElement("VARIABLE", varName, fullPath, fileName)
+		      mElements.Add(element)
+		      Logger.Log("    Total elements: " + mElements.Count.ToString)
+		      ElementLookup.Value(fullPath) = element
+		      Logger.Log("Found variable: " + fullPath + " in " + fileName)
+		    End If
+		  End If
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub FinalizeMethod(context As ParsingContext)
+		  //Private Sub FinalizeMethod(context As ParsingContext)
+		  Logger.Log("=== FinalizeMethod Called ===")
+		  Logger.Log("  InMethodOrFunction: " + context.InMethodOrFunction.ToString)
+		  Logger.Log("  CurrentMethodFullPath: " + context.CurrentMethodFullPath)
+		  
+		  If context.InMethodOrFunction And context.CurrentMethodFullPath <> "" Then
+		    Logger.Log("  Looking for element: " + context.CurrentMethodFullPath)
+		    
+		    // Find the element in mElements
+		    Var element As CodeElement = FindElementByFullPath(context.CurrentMethodFullPath)
+		    
+		    If element <> Nil Then
+		      Logger.Log("  Element FOUND!")
+		      
+		      // Store the accumulated code
+		      element.Code = context.CurrentMethodCode
+		      
+		      Logger.Log("  Code length: " + context.CurrentMethodCode.Length.ToString)
+		      Logger.Log("  Code lines: " + context.CurrentMethodCode.CountFields(EndOfLine).ToString)
+		      
+		      // Calculate lines of code
+		      element.LinesOfCode = element.Code.CountFields(EndOfLine)
+		      
+		      Logger.Log("  LOC set to: " + element.LinesOfCode.ToString)
+		      
+		      // NOW calculate complexity (after code is accumulated)
+		      element.CyclomaticComplexity = CalculateMethodComplexity(element)
+		      
+		      Logger.Log("  Complexity calculated: " + element.CyclomaticComplexity.ToString)
+		      
+		      // Reset context
+		      context.InMethodOrFunction = False
+		      context.CurrentMethodFullPath = ""
+		      context.CurrentMethodCode = ""
+		    Else
+		      Logger.Log("  ERROR: Element NOT FOUND!")
+		    End If
+		  Else
+		    Logger.Log("  Skipped - not in method or no path")
+		  End If
+		  
+		  Logger.Log("=== End FinalizeMethod ===")
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub AccumulateCodeLine(context As ParsingContext, line As String)
+		  //Private Sub AccumulateCodeLine(context As ParsingContext, line As String)
+		  // Add line to current method's code if we're in a method
+		  
+		  If context.InMethodOrFunction Then
+		    context.CurrentMethodCode = context.CurrentMethodCode + line + EndOfLine
+		  End If
+		  
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ResetMethodContext(ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String)
+		  // Reset method tracking variables
+		  inMethodOrFunction = False
+		  currentMethodFullPath = ""
+		  currentMethodCode = ""
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub HandleEndTag(line As String, ByRef inMethodOrFunction As Boolean, ByRef currentMethodFullPath As String, ByRef currentMethodCode As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentInterface As String)
+		  // Handle different types of end tags
+		  
+		  If line.BeginsWith("#tag EndModule") Then
+		    currentModule = ""
+		    currentClass = ""
+		    currentInterface = ""
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf line.BeginsWith("#tag EndClass") Then
+		    currentClass = ""
+		    currentInterface = ""
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		    
+		  ElseIf line.BeginsWith("#tag End") Or line = "End" Or line = "End Sub" Or line = "End Function" Then
+		    // Save the accumulated code to the method element
+		    If inMethodOrFunction And currentMethodFullPath.Trim <> "" Then
+		      Var methodElement As CodeElement = FindElementByFullPath(currentMethodFullPath)
+		      If methodElement <> Nil Then
+		        methodElement.Code = currentMethodCode
+		        Logger.Log("Stored code for method: " + currentMethodFullPath + " (" + currentMethodCode.Length.ToString + " chars)")
+		      End If
+		    End If
+		    
+		    ResetMethodContext(inMethodOrFunction, currentMethodFullPath, currentMethodCode)
+		  End If
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function ExtractModuleName(line As String) As String
+		  Var moduleName As String = line
+		  moduleName = moduleName.Replace("Protected Module ", "")
+		  moduleName = moduleName.Replace("Public Module ", "")
+		  moduleName = moduleName.Replace("Private Module ", "")
+		  moduleName = moduleName.Replace("Global Module ", "")
+		  moduleName = moduleName.Replace("Module ", "")
+		  
+		  Var spacePos As Integer = moduleName.IndexOf(" ")
+		  If spacePos > 0 Then
+		    moduleName = moduleName.Left(spacePos)
+		  End If
+		  
+		  Return moduleName.Trim
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function ExtractClassName(line As String) As String
+		  Var className As String = line
+		  className = className.Replace("Protected Class ", "")
+		  className = className.Replace("Public Class ", "")
+		  className = className.Replace("Private Class ", "")
+		  className = className.Replace("Class ", "")
+		  
+		  Var spacePos As Integer = className.IndexOf(" ")
+		  If spacePos > 0 Then
+		    className = className.Left(spacePos)
+		  End If
+		  
+		  Return className.Trim
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function ExtractInterfaceName(declaration As String) As String
+		  // Private Function ExtractInterfaceName(declaration As String) As String
+		  // Extract interface name from "Interface IMyInterface"
+		  Var parts() As String = declaration.Split(" ")
+		  
+		  For i As Integer = 0 To parts.Count - 1
+		    If parts(i).Uppercase = "INTERFACE" And i + 1 < parts.Count Then
+		      Return parts(i + 1).Trim
+		    End If
+		  Next
+		  
+		  Return "UnknownInterface"
+		  
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function ExtractMethodName(line As String) As String
+		  line = line.Replace("Protected ", "")
+		  line = line.Replace("Private ", "")
+		  line = line.Replace("Public ", "")
+		  line = line.Replace("Sub ", "")
+		  line = line.Replace("Function ", "")
+		  
+		  Var parenPos As Integer = line.IndexOf("(")
+		  Var spacePos As Integer = line.IndexOf(" ")
+		  Var endPos As Integer = line.Length
+		  
+		  If parenPos > 0 And (spacePos = -1 Or parenPos < spacePos) Then
+		    endPos = parenPos
+		  ElseIf spacePos > 0 Then
+		    endPos = spacePos
+		  End If
+		  
+		  If endPos > 0 Then
+		    Return line.Left(endPos).Trim
+		  End If
+		  
+		  Return ""
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function ExtractPropertyName(line As String) As String
+		  line = line.Replace("Protected Property ", "")
+		  line = line.Replace("Private Property ", "")
+		  line = line.Replace("Public Property ", "")
+		  line = line.Replace("Property ", "")
+		  
+		  Var spacePos As Integer = line.IndexOf(" ")
+		  If spacePos > 0 Then
+		    Return line.Left(spacePos).Trim
+		  End If
+		  
+		  Return line.Trim
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function ExtractVariableName(line As String) As String
+		  line = line.Replace("Dim ", "")
+		  line = line.Replace("Var ", "")
+		  
+		  Var spacePos As Integer = line.IndexOf(" ")
+		  Var asPos As Integer = line.IndexOf(" As ")
+		  Var equalPos As Integer = line.IndexOf("=")
+		  Var endPos As Integer = line.Length
+		  
+		  If spacePos > 0 Then endPos = spacePos
+		  If asPos > 0 And asPos < endPos Then endPos = asPos
+		  If equalPos > 0 And equalPos < endPos Then endPos = equalPos
+		  
+		  If endPos > 0 Then
+		    Return line.Left(endPos).Trim
+		  End If
+		  
+		  Return ""
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ExtractParameterInfo(signature As String, element As CodeElement)
+		  // Private Sub ExtractParameterInfo(signature As String, element As CodeElement)
+		  // Extract parameter information from method signature
+		  // Signature format: "Sub MethodName(param1 As Type, param2 As Type)" or "Function MethodName(...) As ReturnType"
+		  
+		  // Find the parameter list (between parentheses)
+		  Var openParen As Integer = signature.IndexOf("(")
+		  Var closeParen As Integer = signature.IndexOf(")")
+		  
+		  If openParen < 0 Or closeParen < 0 Or closeParen <= openParen Then
+		    // No parameters or malformed signature
+		    element.ParameterCount = 0
+		    element.OptionalParameterCount = 0
+		    element.Parameters = ""
+		    Return
+		  End If
+		  
+		  // Extract the parameter list
+		  Var paramList As String = signature.Mid(openParen + 1, closeParen - openParen - 1).Trim
+		  element.Parameters = paramList
+		  
+		  If paramList = "" Then
+		    // Empty parameter list
+		    element.ParameterCount = 0
+		    element.OptionalParameterCount = 0
+		    Return
+		  End If
+		  
+		  // Count parameters (split by comma, but be careful of nested types)
+		  Var params() As String = SplitParameters(paramList)
+		  element.ParameterCount = params.Count
+		  
+		  // Count optional parameters
+		  Var optionalCount As Integer = 0
+		  For Each param As String In params
+		    Var upperParam As String = param.Uppercase
+		    // Check for "Optional" keyword or default value "="
+		    If upperParam.Contains("OPTIONAL") Or param.Contains("=") Then
+		      optionalCount = optionalCount + 1
+		    End If
+		  Next
+		  
+		  element.OptionalParameterCount = optionalCount
+		  element.ParameterCount =  params.Count
+		  Logger.Log("Number of parameters = " + element.ParameterCount.ToString)
+		End Sub
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function SplitParameters(paramList As String) As String()
+		  // Private Function SplitParameters(paramList As String) As String()
+		  // Split parameter list by commas, handling nested types like Dictionary(String, Integer)
+		  
+		  Var params() As String
+		  Var currentParam As String = ""
+		  Var parenDepth As Integer = 0
+		  
+		  
+		  For i As Integer = 0 To paramList.Length 
+		    
+		    Var c As String = paramList.Middle(i, 1)
+		    Select Case c
+		    case "("
+		      
+		      parenDepth = parenDepth + 1
+		      'currentParam = currentParam + c
+		    case  ")" 
+		      parenDepth = parenDepth - 1
+		      'currentParam = currentParam + c
+		    case "," 
+		      // Found a parameter separator at top level
+		      If currentParam.Trim <> "" Then
+		        params.Add(currentParam.Trim)
+		      End If
+		      currentParam = ""
+		    Else
+		      currentParam = currentParam + c
+		    End select
+		  Next
+		  
+		  // Add the last parameter
+		  If currentParam.Trim <> "" Then
+		    params.Add(currentParam.Trim)
+		  End If
+		  
+		  Return params
+		  
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function CountParametersInList(paramList As String) As Integer
+		  // Count parameters in a parameter list, handling nested parentheses
+		  
+		  If paramList.Trim = "" Then Return 0
+		  
+		  Var count As Integer = 1  // At least one parameter if string is not empty
+		  Var parenDepth As Integer = 0
+		  
+		  For i As Integer = 0 To paramList.Length - 1
+		    Var c As String = paramList.Mid(i, 1)
+		    
+		    If c = "(" Then
+		      parenDepth = parenDepth + 1
+		    ElseIf c = ")" Then
+		      parenDepth = parenDepth - 1
+		    ElseIf c = "," And parenDepth = 0 Then
+		      count = count + 1
+		    End If
+		  Next
+		  
+		  Return count
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsModuleDeclaration(line As String) As Boolean
+		  Return line.BeginsWith("Protected Module ") Or _
+		  line.BeginsWith("Public Module ") Or _
+		  line.BeginsWith("Private Module ") Or _
+		  line.BeginsWith("Global Module ") Or _
+		  line.BeginsWith("Module ")
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsClassDeclaration(line As String) As Boolean
+		  Return line.BeginsWith("Protected Class ") Or _
+		  line.BeginsWith("Public Class ") Or _
+		  line.BeginsWith("Private Class ") Or _
+		  line.BeginsWith("Class ")
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsInterfaceDeclaration(line As String) As Boolean
+		  Return line.BeginsWith("Protected Interface ") Or _
+		  line.BeginsWith("Public Interface ") Or _
+		  line.BeginsWith("Private Interface ") Or _
+		  line.BeginsWith("Interface ")
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsMethodOrFunctionDeclaration(line As String) As Boolean
+		  // Private Function IsMethodOrFunctionDeclaration(line As String) As Boolean
+		  // Check for proper method/function declarations at the start of the line
+		  Return (line.BeginsWith("Sub ") Or _
+		  line.BeginsWith("Function ") Or _
+		  line.BeginsWith("Sub ") Or _
+		  line.BeginsWith("Function ") Or _
+		  line.BeginsWith("Sub ") Or _
+		  line.BeginsWith("Function ") Or _
+		  line.BeginsWith("Public Sub ") Or _
+		  line.BeginsWith("Public Function ") Or _
+		  line.BeginsWith("Shared Sub ") Or _
+		  line.BeginsWith("Shared Function ")) And _
+		  Not line.BeginsWith("#tag")
+		  
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsPropertyDeclaration(line As String) As Boolean
+		  // Private Function IsPropertyDeclaration(line As String) As Boolean
+		  // Check for proper property declarations at the start of the line
+		  Return (line.BeginsWith("Property ") Or _
+		  line.BeginsWith("Protected Property ") Or _
+		  line.BeginsWith("Private Property ") Or _
+		  line.BeginsWith("Public Property ") Or _
+		  line.BeginsWith("Shared Property ")) And _
+		  Not line.BeginsWith("#tag")
+		  
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsVariableDeclaration(line As String) As Boolean
+		  Return (line.BeginsWith("Var ") Or line.BeginsWith("Dim ")) And Not line.BeginsWith("#tag")
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsEndMethodStatement(line As String) As Boolean
+		  // Private Function IsEndMethodStatement(line As String) As Boolean
+		  // Check if line marks the end of a method/function
+		  
+		  Var upper As String = line.Uppercase.Trim
+		  
+		  Return upper = "END" Or _
+		  upper = "END SUB" Or _
+		  upper = "END FUNCTION" Or _
+		  upper = "END GET" Or _
+		  upper = "END SET" Or _
+		  upper.BeginsWith("END ")
+		  
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsEndTag(line As String) As Boolean
+		  // Check if line is any kind of end tag
+		  Return line.BeginsWith("#tag End") Or _
+		  line = "End" Or _
+		  line = "End Sub" Or _
+		  line = "End Function"
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function IsXojoSourceFile(item As FolderItem) As Boolean
+		  Var name As String = item.Name.Lowercase
+		  Return name.EndsWith(".xojo_code") Or _
+		  name.EndsWith(".xojo_window") Or _
+		  name.EndsWith(".xojo_menu") Or _
+		  name.EndsWith(".xojo_toolbar") Or _
+		  name.Contains(".xojo_")
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function BuildFullPath(moduleName As String, className As String, elementName As String) As String
+		  // Private Function BuildFullPath(moduleName As String, className As String, elementName As String) As String
+		  If moduleName <> "" And className <> "" Then
+		    Return moduleName + "." + className + "." + elementName
+		  ElseIf moduleName <> "" Then
+		    Return moduleName + "." + elementName
+		  ElseIf className <> "" Then
+		    Return className + "." + elementName
+		  Else
+		    Return elementName
+		  End If
+		  
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function BuildMethodFullPath(line As String, currentModule As String, currentClass As String) As String
+		  // Build the full path for a method based on context
+		  
+		  Var methodName As String = ExtractMethodName(line)
+		  If methodName.Trim = "" Then Return ""
+		  
+		  If currentModule.Trim <> "" And currentClass.Trim <> "" Then
+		    Return currentModule + "." + currentClass + "." + methodName
+		  ElseIf currentModule.Trim <> "" Then
+		    Return currentModule + "." + methodName
+		  ElseIf currentClass.Trim <> "" Then
+		    Return currentClass + "." + methodName
+		  Else
+		    Return methodName
+		  End If
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Function ParseMethodParameters(methodCode As String) As Dictionary
+		  // Parse method signature and extract parameter information
+		  // Returns Dictionary with: parameterCount, optionalCount
+		  
+		  Var result As New Dictionary
+		  result.Value("parameterCount") = 0
+		  result.Value("optionalCount") = 0
+		  
+		  If methodCode.Trim = "" Then Return result
+		  
+		  // Find the method declaration line (first line that's not a comment)
+		  Var lines() As String = methodCode.Split(EndOfLine)
+		  Var declarationLine As String = ""
+		  
+		  For Each line As String In lines
+		    Var trimmedLine As String = line.Trim
+		    If trimmedLine.Length > 0 And Not trimmedLine.BeginsWith("'") And Not trimmedLine.BeginsWith("//") Then
+		      declarationLine = trimmedLine
+		      Exit For line
+		    End If
+		  Next
+		  
+		  If declarationLine = "" Then Return result
+		  
+		  // Check if this is a method declaration (Sub or Function)
+		  Var upperLine As String = declarationLine.Uppercase
+		  If Not (upperLine.BeginsWith("SUB ") Or upperLine.BeginsWith("FUNCTION ") Or _
+		    upperLine.BeginsWith("PRIVATE SUB ") Or upperLine.BeginsWith("PRIVATE FUNCTION ") Or _
+		    upperLine.BeginsWith("PUBLIC SUB ") Or upperLine.BeginsWith("PUBLIC FUNCTION ") Or _
+		    upperLine.BeginsWith("PROTECTED SUB ") Or upperLine.BeginsWith("PROTECTED FUNCTION ")) Then
+		    Return result
+		  End If
+		  
+		  // Find parameter list (between parentheses)
+		  Var openParen As Integer = declarationLine.IndexOf("(")
+		  Var closeParen As Integer = declarationLine.IndexOf(")")
+		  
+		  If openParen < 0 Or closeParen < 0 Or closeParen <= openParen Then
+		    Return result  // No parameters or invalid syntax
+		  End If
+		  
+		  Var paramList As String = declarationLine.Mid(openParen + 1, closeParen - openParen - 1).Trim
+		  
+		  If paramList = "" Then
+		    Return result  // Empty parameter list
+		  End If
+		  
+		  // Count parameters by splitting on commas (ignoring commas inside parentheses)
+		  Var paramCount As Integer = CountParametersInList(paramList)
+		  result.Value("parameterCount") = paramCount
+		  
+		  // Count optional parameters
+		  Var optionalCount As Integer = CountOccurrencesInString(paramList.Uppercase, "OPTIONAL ")
+		  result.Value("optionalCount") = optionalCount
+		  
+		  Return result
+		End Function
+	#tag EndMethod
+	#tag Method, Flags = &h0
+		Sub ScanProjectForDeclarations(folder As FolderItem)
+		  If folder = Nil Or Not folder.Exists Then Return
+		  
+		  For Each item As FolderItem In folder.Children
+		    Try
+		      If item = Nil Then Continue
+		      
+		      If item.IsFolder Then
+		        ScanProjectForDeclarations(item)
+		      ElseIf IsXojoSourceFile(item) Then
+		        ProcessSourceFile(item)
+		      End If
+		      
+		    Catch e As RuntimeException
+		      Logger.Log("Error processing item: " + If(item <> Nil, item.Name, "unknown"))
+		      Continue
+		    End Try
+		  Next
+		  
+		  // After building relationships and error analysis
+		End Sub
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Sub ProcessLineForRelationships(line As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentMethodFullPath As String, ByRef inMethod As Boolean)
+		  // Private Sub ProcessLineForRelationships(line As String, ByRef currentModule As String, ByRef currentClass As String, ByRef currentMethodFullPath As String, ByRef inMethod As Boolean)
+		  // Process a line to track context and detect relationships
+		  
+		  If IsModuleDeclaration(line) Then
+		    currentModule = ExtractModuleName(line)
+		    currentClass = ""
+		    currentMethodFullPath = ""
+		    inMethod = False
+		    
+		  ElseIf IsClassDeclaration(line) Then
+		    currentClass = ExtractClassName(line)
+		    currentMethodFullPath = ""
+		    inMethod = False
+		    
+		  ElseIf IsMethodOrFunctionDeclaration(line) Then
+		    currentMethodFullPath = BuildMethodFullPath(line, currentModule, currentClass)
+		    inMethod = True
+		  End If
+		  
+		  // Don't call DetectMethodCalls here!
+		  
+		End Sub
+	#tag EndMethod
+
+
+	#tag Method, Flags = &h21
+		Function CalculateMethodComplexity(method As CodeElement) As Integer
+		  // Private Function CalculateMethodComplexity(method As CodeElement) As Integer
+		  ' Calculate cyclomatic complexity for a method
+		  
+		  Var complexity As Integer = 1
+		  Var upperCode As String = method.Code.Uppercase
+		  
+		  ' Decision points
+		  complexity = complexity + CountOccurrencesInString(upperCode, " IF ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "IF ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, "ELSEIF ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " FOR ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "FOR ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " WHILE ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "WHILE ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " DO ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "DO ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " CASE ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, EndOfLine + "CASE ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " AND ")
+		  complexity = complexity + CountOccurrencesInString(upperCode, " OR ")
+		  
+		  Return complexity
+		  
+		End Function
+	#tag EndMethod
+
+	#tag Method, Flags = &h21
+		Function CountOccurrencesInString(text As String, searchFor As String) As Integer
+		  // Count occurrences of a substring in text
+		  
+		  Var count As Integer = 0
+		  Var pos As Integer = 0
+		  
+		  Do
+		    pos = text.IndexOf(pos, searchFor)
+		    If pos >= 0 Then
+		      count = count + 1
+		      pos = pos + searchFor.Length
+		    End If
+		  Loop Until pos < 0
+		  
+		  Return count
+		End Function
+	#tag EndMethod
+
+	#tag Property, Flags = &h21
+		Private ElementLookup As Dictionary
+	#tag EndProperty
+
+	#tag Property, Flags = &h21
+		Private mElements() As CodeElement
+	#tag EndProperty
+
+	#tag ViewBehavior
+		#tag ViewProperty
+			Name="Name"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Index"
+			Visible=true
+			Group="ID"
+			InitialValue="-2147483648"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Super"
+			Visible=true
+			Group="ID"
+			InitialValue=""
+			Type="String"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Left"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+		#tag ViewProperty
+			Name="Top"
+			Visible=true
+			Group="Position"
+			InitialValue="0"
+			Type="Integer"
+			EditorType=""
+		#tag EndViewProperty
+	#tag EndViewBehavior
+End Class
+#tag EndClass

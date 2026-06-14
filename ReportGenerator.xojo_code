@@ -767,7 +767,8 @@ Protected Class ReportGenerator
 		    
 		    // Parameter Complexity
 		    If method.Code.Trim <> "" Then
-		      Var paramInfo As Dictionary = analyzer.ParseMethodParameters(method.Code)
+		      Var cp As New CodeParser
+    Var paramInfo As Dictionary = cp.ParseMethodParameters(method.Code)
 		      m.ParameterCount = paramInfo.Value("parameterCount")
 		      m.OptionalParameterCount = paramInfo.Value("optionalCount")
 		      m.HasTooManyParameters = (m.ParameterCount > 5)
