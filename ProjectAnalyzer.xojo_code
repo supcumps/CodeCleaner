@@ -2712,8 +2712,7 @@ Protected Class ProjectAnalyzer
 		  Var methods() As CodeElement
 		  
 		  For Each element As CodeElement In mElements
-		    Logger.Log("Checking: " + element.Name + " Type: " + element.ElementType)
-		    
+				    
 		    If element.ElementType = "METHOD" Then  // ← Is this matching?
 		      methods.Add(element)
 		    End If
