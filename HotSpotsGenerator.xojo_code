@@ -318,10 +318,6 @@ Protected Module HotSpotsGenerator
 	#tag EndNote
 
 
-	#tag Property, Flags = &h0
-		Untitled As Integer
-	#tag EndProperty
-
 
 	#tag Method, Flags = &h21
 		Private Function CalculateNestingDepth(code As String) As Integer

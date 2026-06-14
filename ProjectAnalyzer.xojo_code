@@ -2008,31 +2008,6 @@ Protected Class ProjectAnalyzer
 		End Sub
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Sub DrawArrowPNG(g As Graphics, x1 As Integer, y1 As Integer, x2 As Integer, y2 As Integer)
-		  // Private Sub DrawArrowPNG(g As Graphics, x1 As Integer, y1 As Integer, x2 As Integer, y2 As Integer)
-		  // Draw line
-		  g.DrawLine(x1, y1, x2, y2)
-		  
-		  // Calculate angle for arrowhead
-		  Var dx As Double = x2 - x1
-		  Var dy As Double = y2 - y1
-		  Var angle As Double = ATan2(dy, dx)
-		  
-		  // Draw arrowhead
-		  Var arrowSize As Integer = 12
-		  Var arrowAngle As Double = 0.4
-		  
-		  Var ax1 As Integer = x2 - arrowSize * Cos(angle - arrowAngle)
-		  Var ay1 As Integer = y2 - arrowSize * Sin(angle - arrowAngle)
-		  Var ax2 As Integer = x2 - arrowSize * Cos(angle + arrowAngle)
-		  Var ay2 As Integer = y2 - arrowSize * Sin(angle + arrowAngle)
-		  
-		  g.DrawLine(x2, y2, ax1, ay1)
-		  g.DrawLine(x2, y2, ax2, ay2)
-		  
-		End Sub
-	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Sub DrawConnections(g As Graphics, deps() As Dependency, nodes() As MethodNode)
@@ -2089,37 +2064,6 @@ Protected Class ProjectAnalyzer
 		End Sub
 	#tag EndMethod
 
-	#tag Method, Flags = &h21
-		Private Sub DrawLegendPNG(g As Graphics, x As Integer, y As Integer)
-		  // Private Sub DrawLegendPNG(g As Graphics, x As Integer, y As Integer)
-		  g.FontSize = 12
-		  g.Bold = True
-		  g.DrawingColor = Color.RGB(44, 62, 80)
-		  g.DrawText("Complexity", x, y)
-		  
-		  g.FontSize = 10
-		  g.Bold = False
-		  
-		  // Green
-		  g.DrawingColor = Color.RGB(46, 204, 113)
-		  g.FillRectangle(x, y + 20, 20, 20)
-		  g.DrawingColor = Color.Black
-		  g.DrawText("Low (1-5)", x + 30, y + 35)
-		  
-		  // Yellow
-		  g.DrawingColor = Color.RGB(241, 196, 15)
-		  g.FillRectangle(x, y + 50, 20, 20)
-		  g.DrawingColor = Color.Black
-		  g.DrawText("Medium (6-10)", x + 30, y + 65)
-		  
-		  // Red
-		  g.DrawingColor = Color.RGB(231, 76, 60)
-		  g.FillRectangle(x, y + 80, 20, 20)
-		  g.DrawingColor = Color.Black
-		  g.DrawText("High (11+)", x + 30, y + 95)
-		  
-		End Sub
-	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Sub DrawMethodNodes(g As Graphics, nodes() As MethodNode)
@@ -2434,7 +2378,7 @@ Protected Class ProjectAnalyzer
 		  g.DrawText("Method Dependency Graph", 50, 50)
 		  
 		  // Draw legend
-		  DrawLegendPNG(g, finalWidth - 220, 100)
+		  DrawLegend(g, finalWidth - 220, 100)
 		  
 		  // Draw connections first (behind nodes)
 		  g.DrawingColor = Color.RGB(150, 150, 150)  // Lighter gray
@@ -2450,7 +2394,7 @@ Protected Class ProjectAnalyzer
 		    Next
 		    
 		    If fromNode <> Nil And toNode <> Nil Then
-		      DrawArrowPNG(g, fromNode.X, fromNode.Y, toNode.X, toNode.Y)
+		      DrawArrow(g, fromNode.X, fromNode.Y, toNode.X, toNode.Y)
 		    End If
 		  Next
 		  
