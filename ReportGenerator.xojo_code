@@ -2016,9 +2016,7 @@ Protected Class ReportGenerator
 		  Next
 		  
 		  // DEBUG: Check counts BEFORE deduplication
-		  MessageBox("Before dedup - High: " + highPriority.Count.ToString + _
-		  " Medium: " + mediumPriority.Count.ToString + _
-		  " Low: " + lowPriority.Count.ToString)
+
 		  
 		  // DEDUPLICATE EACH PRIORITY GROUP
 		  DeduplicateSuggestionsInPlace(highPriority)
@@ -2026,9 +2024,7 @@ Protected Class ReportGenerator
 		  DeduplicateSuggestionsInPlace(lowPriority)
 		  
 		  // DEBUG: Check counts AFTER deduplication
-		  MessageBox("After dedup - High: " + highPriority.Count.ToString + _
-		  " Medium: " + mediumPriority.Count.ToString + _
-		  " Low: " + lowPriority.Count.ToString)
+
 		  
 		  // Render high priority first
 		  If highPriority.Count > 0 Then
