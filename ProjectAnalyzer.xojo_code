@@ -1448,7 +1448,7 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h0
 		Function GetAllElements() As CodeElement()
 		  // Public Function GetAllElements() As CodeElement()
-		  Return mElements
+		  Return AllElements
 		  
 		End Function
 	#tag EndMethod
@@ -1487,15 +1487,7 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h0
 		Function GetClassElements() As CodeElement()
 		  // Public Function GetClassElements() As CodeElement()
-		  Var classes() As CodeElement
-		  
-		  For Each element As CodeElement In mElements
-		    If element.ElementType = "CLASS" Then
-		      classes.Add(element)
-		    End If
-		  Next
-		  
-		  Return classes
+		  Return ClassElements
 		  
 		End Function
 	#tag EndMethod
@@ -1576,18 +1568,8 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h0
 		Function GetMethodElements() As CodeElement()
 		  // Public Function GetMethodElements() As CodeElement()
-		  Var methods() As CodeElement
-		  
-		  For Each element As CodeElement In mElements
-		    
-		    If element.ElementType = "METHOD" Then  // ← Is this matching?
-		      methods.Add(element)
-		    End If
-		  Next
-		  
-		  Logger.Log("Found " + methods.Count.ToString + " methods")
-		  Return methods
-		  
+		  Return MethodElements
+		
 		End Function
 	#tag EndMethod
 
@@ -1629,16 +1611,8 @@ Protected Class ProjectAnalyzer
 	#tag Method, Flags = &h0
 		Function GetModuleElements() As CodeElement()
 		  // Public Function GetModuleElements() As CodeElement()
-		  Var modules() As CodeElement
-		  
-		  For Each element As CodeElement In mElements
-		    If element.ElementType = "MODULE" Then
-		      modules.Add(element)
-		    End If
-		  Next
-		  
-		  Return modules
-		  
+		  Return ModuleElements
+		
 		End Function
 	#tag EndMethod
 
