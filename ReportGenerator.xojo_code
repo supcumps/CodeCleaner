@@ -1,5 +1,20 @@
 #tag Class
 Protected Class ReportGenerator
+	#tag Constant, Name = kPageWidth, Type = Double, Dynamic = False, Default = "612", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kPageHeight, Type = Double, Dynamic = False, Default = "792", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kMargin, Type = Double, Dynamic = False, Default = "50", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kLineHeight, Type = Double, Dynamic = False, Default = "14", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kBottomMargin, Type = Double, Dynamic = False, Default = "100", Scope = Private
+	#tag EndConstant
+
 	#tag Method, Flags = &h21
 		Private Function CalculateAggregateStats(methodMetrics() As MethodMetrics) As Dictionary
 		  // Calculate aggregate statistics from method metrics
@@ -381,11 +396,11 @@ Protected Class ReportGenerator
 		    Logger.Log("=== Starting Analysis PDF Generation ===")
 		    
 		    // Setup
-		    Var pageWidth As Integer = 612
-		    Var pageHeight As Integer = 792  // Standard US Letter
-		    Var margin As Double = 50
-		    Var lineHeight As Double = 14
-		    Var bottomMargin As Double = 100  // Space to leave at bottom before new page
+		    Var pageWidth As Double = kPageWidth
+		    Var pageHeight As Double = kPageHeight  // Standard US Letter
+		    Var margin As Double = kMargin
+		    Var lineHeight As Double = kLineHeight
+		    Var bottomMargin As Double = kBottomMargin  // Space to leave at bottom before new page
 		    
 		    // Create PDF with first page
 		    Logger.Log("Creating PDF document...")
@@ -488,7 +503,7 @@ Protected Class ReportGenerator
 		    pdf.PageWidth = 612
 		    
 		    Var currentY As Double = 50
-		    Var margin As Double = 50
+		    Var margin As Double = kMargin
 		    Var contentWidth As Double = 512
 		    
 		    Var g As Graphics = pdf.Graphics
@@ -647,9 +662,9 @@ Protected Class ReportGenerator
 		    Logger.Log("=== Starting PDF Generation ===")
 		    
 		    // Setup
-		    Var pageWidth As Integer = 612
-		    Var margin As Double = 50
-		    Var lineHeight As Double = 14
+		    Var pageWidth As Double = kPageWidth
+		    Var margin As Double = kMargin
+		    Var lineHeight As Double = kLineHeight
 		    
 		    Logger.Log("Calculating height...")
 		    // Calculate height needed
