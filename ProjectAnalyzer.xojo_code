@@ -2258,7 +2258,7 @@ Protected Class ProjectAnalyzer
 		  End If
 		  
 		  // Extract the parameter list
-		  Var paramList As String = signature.Mid(openParen + 1, closeParen - openParen+1).Trim
+		  Var paramList As String = signature.Mid(openParen + 1, closeParen - openParen - 1).Trim
 		  element.Parameters = paramList
 		  
 		  If paramList = "" Then
