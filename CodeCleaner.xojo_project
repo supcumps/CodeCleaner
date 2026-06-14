@@ -10,6 +10,7 @@ MultiImage=codeCleaning;codeCleaning.xojo_image;&h00000000796C97FF;&h00000000000
 MultiImage=macOS_icon_32x32;macOS_icon_32x32.xojo_image;&h000000002B7FDFFF;&h0000000000000000;false
 MultiImage=macOS_icon_64x64;macOS_icon_64x64.xojo_image;&h000000004C5097FF;&h0000000000000000;false
 Class=ProjectAnalyzer;ProjectAnalyzer.xojo_code;&h000000006A917FFF;&h0000000000000000;false
+Class=GraphGenerator;GraphGenerator.xojo_code;&h000000006A917F01;&h0000000000000000;false
 Class=CodeElement;CodeElement.xojo_code;&h000000002D4D4FFF;&h0000000000000000;false
 Class=FlowchartGenerator;FlowchartGenerator.xojo_code;&h000000005EDEEFFF;&h0000000000000000;false
 Module=CodeCleanWindowHelpers;CodeCleanWindowHelpers.xojo_code;&h00000000552067FF;&h0000000000000000;false

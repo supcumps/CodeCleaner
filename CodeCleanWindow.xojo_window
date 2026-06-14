@@ -476,6 +476,7 @@ Begin DesktopWindow CodeCleanWindow
       Top             =   70
       Transparent     =   False
       Underline       =   False
+      Value           =   False
       Visible         =   True
       VisualState     =   0
       Width           =   166
@@ -856,7 +857,8 @@ End
 		  Var folder As FolderItem = dlg.ShowModal()
 		  
 		  If folder <> Nil Then
-		    mAnalyzer.GenerateDependencyGraphPNG(folder)
+		    Var gg As New GraphGenerator
+  gg.GenerateDependencyGraphPNG(mAnalyzer.GetAllElements(), folder)
 		  End If
 		  
 		End Sub
@@ -872,7 +874,8 @@ End
 		  Var folder As FolderItem = dlg.ShowModal()
 		  
 		  If folder <> Nil Then
-		    mAnalyzer.GenerateInteractiveDependencyGraph(folder)
+		    Var gg As New GraphGenerator
+  gg.GenerateInteractiveDependencyGraph(mAnalyzer.GetAllElements(), folder)
 		  End If
 		  
 		End Sub
@@ -881,7 +884,7 @@ End
 #tag Events chkDebugMode
 	#tag Event
 		Sub ValueChanged()
-		   Logger.DebugMode = Me.Value
+		  Logger.DebugMode = Me.Value
 		End Sub
 	#tag EndEvent
 #tag EndEvents
