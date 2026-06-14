@@ -160,7 +160,7 @@ Begin DesktopWindow CodeCleanWindow
       BevelStyle      =   0
       Bold            =   False
       ButtonStyle     =   0
-      Caption         =   "Export Scan Results"
+      Caption         =   "Save Text Report"
       CaptionAlignment=   3
       CaptionDelta    =   0
       CaptionPosition =   1
@@ -260,7 +260,7 @@ Begin DesktopWindow CodeCleanWindow
       BevelStyle      =   0
       Bold            =   False
       ButtonStyle     =   0
-      Caption         =   "Generate Hot Spots Report"
+      Caption         =   "Hot Spots PDF Report"
       CaptionAlignment=   3
       CaptionDelta    =   0
       CaptionPosition =   1
@@ -310,7 +310,7 @@ Begin DesktopWindow CodeCleanWindow
       BevelStyle      =   0
       Bold            =   False
       ButtonStyle     =   0
-      Caption         =   "Show All  Hot Spots "
+      Caption         =   "Hot Spots Text Report"
       CaptionAlignment=   3
       CaptionDelta    =   0
       CaptionPosition =   1
@@ -589,7 +589,7 @@ End
 		      
 		      // Test parsing
 		      Var cp As New CodeParser
-      Var result As Dictionary = cp.ParseMethodParameters(method.Code)
+		      Var result As Dictionary = cp.ParseMethodParameters(method.Code)
 		      Var paramCount As Integer = result.Value("parameterCount")
 		      Var paramCountStr As String = paramCount.ToString
 		      Logger.Log("Detected parameters: " + paramCountStr)
@@ -858,8 +858,12 @@ End
 		  Var folder As FolderItem = dlg.ShowModal()
 		  
 		  If folder <> Nil Then
+		    If mAnalyzer = Nil Then
+		      MessageBox "Please scan a project folder first."
+		      Return
+		    End If
 		    Var gg As New GraphGenerator
-  gg.GenerateDependencyGraphPNG(mAnalyzer.GetAllElements(), folder)
+		    gg.GenerateDependencyGraphPNG(mAnalyzer.GetAllElements(), folder)
 		  End If
 		  
 		End Sub
@@ -875,8 +879,12 @@ End
 		  Var folder As FolderItem = dlg.ShowModal()
 		  
 		  If folder <> Nil Then
+		    If mAnalyzer = Nil Then
+		      MessageBox "Please scan a project folder first."
+		      Return
+		    End If
 		    Var gg As New GraphGenerator
-  gg.GenerateInteractiveDependencyGraph(mAnalyzer.GetAllElements(), folder)
+		    gg.GenerateInteractiveDependencyGraph(mAnalyzer.GetAllElements(), folder)
 		  End If
 		  
 		End Sub
