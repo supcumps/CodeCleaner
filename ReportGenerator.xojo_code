@@ -398,9 +398,9 @@ Protected Class ReportGenerator
 		    // Setup
 		    Var pageWidth As Integer = 612
 		    Var pageHeight As Integer = 792  // Standard US Letter
-		    Var margin As Double = kMargin
-		    Var lineHeight As Double = kLineHeight
-		    Var bottomMargin As Double = kBottomMargin  // Space to leave at bottom before new page
+		    Var margin As Double = 50
+		    Var lineHeight As Double = 14
+		    Var bottomMargin As Double = 100  // Space to leave at bottom before new page
 		    
 		    // Create PDF with first page
 		    Logger.Log("Creating PDF document...")
@@ -503,7 +503,7 @@ Protected Class ReportGenerator
 		    pdf.PageWidth = 612
 		    
 		    Var currentY As Double = 50
-		    Var margin As Double = kMargin
+		    Var margin As Double = 50
 		    Var contentWidth As Double = 512
 		    
 		    Var g As Graphics = pdf.Graphics
@@ -663,8 +663,8 @@ Protected Class ReportGenerator
 		    
 		    // Setup
 		    Var pageWidth As Integer = 612
-		    Var margin As Double = kMargin
-		    Var lineHeight As Double = kLineHeight
+		    Var margin As Double = 50
+		    Var lineHeight As Double = 14
 		    
 		    Logger.Log("Calculating height...")
 		    // Calculate height needed
