@@ -1,6 +1,57 @@
 #tag Class
 Protected Class App
 Inherits DesktopApplication
+	#tag Note, Name = Refactored 14/06/26
+		Refactoring Session Complete
+		All 10 steps done. Clean build. 10 commits on main.
+		CommitWhat8f579e9Remove debug MessageBox calls4ea63ccFix Mid() off-by-one i
+		n parameter extraction1b8d28bWire up HotSpot.NestingDepth902080bRemove dead code 
+		(methods, PNG helpers, stray property)29b9d37PDF page constants in 
+		ReportGenerator5d65d72Remove per-element debug Logger.Log477a71aExtract GraphGenerator class 
+		(39KB out of ProjectAnalyzer)db9d236Fix duplicate ScanForRelationships + 
+		AllElements inconsistency42d3175Extract CodeParser class 
+		(37 methods out of ProjectAnalyzer)60b926dUI audit — Nil guards, caption fixes, indentation cleanup
+		ProjectAnalyzer size: ~137KB → ~70KB
+		
+		New classes: CodeParser, GraphGenerator
+		
+		Bugs fixed: duplicate ScanForRelationships() call, AllElements direct access, off-by-one Mid(),
+		 HotSpot.NestingDepth wiring, misplaced AnalyzeRefactoringOpportunities() in parsing pipeline, 
+		graph button crash-on-nil
+		
+	#tag EndNote
+
+	#tag Note, Name = refactoring completed
+		CodeCleaner Refactoring — Complete Session Record
+		Period: Two sessions across June 14-15, 2026
+		
+		Final state: 13 commits ahead of origin, clean build, all features working
+		Commits (oldest → newest)
+		HashDescription8f579e9Remove debug MessageBox calls from RenderRefactoringSuggestions
+		4ea63ccFix off-by-one in Mid() for parameter extraction1b8d28bWire up HotSpot.NestingDepth
+		902080bRemove dead code (methods, PNG helpers, stray property)
+		29b9d37PDF page constants in ReportGenerator
+		5d65d72Remove per-element debug Logger.Log
+		477a71aExtract GraphGenerator class (39KB out of ProjectAnalyzer)db
+		9d236Fix duplicate ScanForRelationships + AllElements inconsistency
+		42d3175Extract CodeParser class (37 methods out of ProjectAnalyzer)
+		60b926dUI audit — Nil guards, caption fixes, indentation cleanupa
+		603e9eFix NilObjectException — restore ProjectAnalyzer Constructor
+		5dc0158Fix 0-elements bug — fix getter methods to use correct propertiesc
+		1efe47Fix PDF dimensions (Double→Integer) + fix console.Logger.Log
+		
+		Architecture after refactoring
+		CodeCleanWindow (UI coordinator)
+		  ├── mAnalyzer: ProjectAnalyzer  (~70KB, was ~137KB)
+		  │     └── delegates parsing to CodeParser
+		  ├── CodeParser  (37 parsing methods, owns mElements/ElementLookup)
+		  ├── GraphGenerator  (11 graph methods, accepts elements() as parameter)
+		  ├── ReportGenerator  (PDF output, constants kPage*/kMargin/kLineHeight)
+		  ├── HotSpotsGenerator  (hotspot analysis + NestingDepth)
+		  └── CodeCleanWindowHelpers  (text report building)
+		
+	#tag EndNote
+
 	#tag Note, Name = Refactoring Suggestions
 		In priority order:
 		
