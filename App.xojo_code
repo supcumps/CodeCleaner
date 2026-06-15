@@ -1,6 +1,27 @@
 #tag Class
 Protected Class App
 Inherits DesktopApplication
+	#tag Method, Flags = &h0
+		Sub UnhandledException(error As RuntimeException)
+		  //  UnhandledException(error As RuntimeException)
+		  Var msg As String = "Error: " + error.Message + EndOfLine
+		  msg = msg + "Error Number: " + Str(error.ErrorNumber) + EndOfLine
+		  If error.Stack <> Nil Then
+		    msg = msg + "Stack:" + EndOfLine
+		    For Each frame As String In error.Stack
+		      msg = msg + "  " + frame + EndOfLine
+		    Next
+		  End If
+		  
+		  Var f As New FolderItem("/tmp/xmcp_debug.log")
+		  Var stream As TextOutputStream = TextOutputStream.Open(f)
+		  stream.Write(msg)
+		  stream.Close
+		  
+		End Sub
+	#tag EndMethod
+
+
 	#tag Note, Name = Refactored 14/06/26
 		Refactoring Session Complete
 		All 10 steps done. Clean build. 10 commits on main.
