@@ -263,7 +263,7 @@ Protected Class GraphGenerator
 		  html = html + "        allNodes = " + nodesJSON + ";" + EndOfLine
 		  html = html + "        allEdges = " + edgesJSON + ";" + EndOfLine
 		  html = html + "" + EndOfLine
-		  html = html + "        console.Logger.Log('Loaded ' + allNodes.length + ' nodes and ' + allEdges.length + ' edges');" + EndOfLine
+		  html = html + "        console.log('Loaded ' + allNodes.length + ' nodes and ' + allEdges.length + ' edges');" + EndOfLine
 		  html = html + "" + EndOfLine
 		  html = html + "        var nodes = new vis.DataSet(allNodes);" + EndOfLine
 		  html = html + "        var edges = new vis.DataSet(allEdges);" + EndOfLine

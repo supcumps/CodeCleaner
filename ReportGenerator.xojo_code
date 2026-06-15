@@ -396,8 +396,8 @@ Protected Class ReportGenerator
 		    Logger.Log("=== Starting Analysis PDF Generation ===")
 		    
 		    // Setup
-		    Var pageWidth As Double = kPageWidth
-		    Var pageHeight As Double = kPageHeight  // Standard US Letter
+		    Var pageWidth As Integer = 612
+		    Var pageHeight As Integer = 792  // Standard US Letter
 		    Var margin As Double = kMargin
 		    Var lineHeight As Double = kLineHeight
 		    Var bottomMargin As Double = kBottomMargin  // Space to leave at bottom before new page
@@ -662,7 +662,7 @@ Protected Class ReportGenerator
 		    Logger.Log("=== Starting PDF Generation ===")
 		    
 		    // Setup
-		    Var pageWidth As Double = kPageWidth
+		    Var pageWidth As Integer = 612
 		    Var margin As Double = kMargin
 		    Var lineHeight As Double = kLineHeight
 		    
