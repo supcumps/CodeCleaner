@@ -13,6 +13,7 @@ Class=ProjectAnalyzer;ProjectAnalyzer.xojo_code;&h000000006A917FFF;&h00000000000
 Class=CodeParser;CodeParser.xojo_code;&h000000006A917F02;&h0000000000000000;false
 Class=GraphGenerator;GraphGenerator.xojo_code;&h000000006A917F01;&h0000000000000000;false
 Class=CodeElement;CodeElement.xojo_code;&h000000002D4D4FFF;&h0000000000000000;false
+Class=ManifestEntry;ManifestEntry.xojo_code;&hFFFFFFFF99887766;&h0000000000000000;false
 Class=FlowchartGenerator;FlowchartGenerator.xojo_code;&h000000005EDEEFFF;&h0000000000000000;false
 Module=CodeCleanWindowHelpers;CodeCleanWindowHelpers.xojo_code;&h00000000552067FF;&h0000000000000000;false
 Class=ReportGenerator;ReportGenerator.xojo_code;&h0000000048B107FF;&h0000000000000000;false

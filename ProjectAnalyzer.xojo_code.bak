@@ -1685,140 +1685,174 @@ Protected Class ProjectAnalyzer
 
 	#tag Method, Flags = &h21
 		Private Function IsSystemMethod(methodName As String) As Boolean
-  // Framework event/lifecycle methods invoked directly by the Xojo runtime.
-  // Constructor/Destructor are handled separately (need "New ClassName" check).
-  Var systemMethods() As String = Array("Open", "Close", _
-  "Paint", "MouseDown", "MouseUp", "MouseDrag", "MouseMove", "MouseEnter", "MouseExit", _
-  "KeyDown", "KeyUp", "GotFocus", "LostFocus", "EnableMenuItems", "MenuBarSelected", _
-  "Activate", "Deactivate", "Resized", "Moved", "Opening", "Closing", _
-  "Action", "Pressed", "ValueChanged", "TextChanged", "SelectionChanged", "DropObject", _
-  "DragEnter", "DragExit", "DragOver", "DragWithin", _
-  "UnhandledException", "NewDocument", "OpenDocument", "HandleURL")
-  
-  Return systemMethods.IndexOf(methodName) >= 0
+		  Var systemMethods() As String = Array("Open", "Close", "Constructor", "Destructor", _
+		  "Paint", "MouseDown", "MouseUp", "MouseDrag", "MouseMove", "MouseEnter", "MouseExit", _
+		  "KeyDown", "KeyUp", "GotFocus", "LostFocus", "EnableMenuItems", "MenuBarSelected", _
+		  "Activate", "Deactivate", "Resized", "Moved", "Opening", "Closing", _
+		  "Action", "Pressed", "TextChanged", "SelectionChanged", "DropObject", _
+		  "DragEnter", "DragExit", "DragOver", "DragWithin")
+		  
+		  Return systemMethods.IndexOf(methodName) >= 0
 		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Sub MarkUsedElements(cleanedText As String, allElements() As CodeElement)
-  Logger.Log("=== MARKUSEDELEMENTS STARTED ===")
-  Logger.Log("Total elements to check: " + allElements.Count.ToString)
-  Logger.Log("Cleaned text length: " + cleanedText.Length.ToString)
-  
-  Var rx As New RegEx
-  rx.Options.CaseSensitive = False
-  
-  For Each element As CodeElement In allElements
-    Var name As String = element.Name
-    If name.Trim = "" Then Continue
-    Var escapedName As String = RegExEscape(name)
-    
-    Select Case element.ElementType
-    Case "METHOD"
-      If IsSystemMethod(name) Then
-        // Framework event/lifecycle handlers (Pressed, ValueChanged, Opening, etc.)
-        // are invoked directly by the Xojo runtime, never by name in user source.
-        // Always treat as used.
-        element.IsUsed = True
-        Logger.Log("Event handler (runtime-invoked, always used): " + element.FullPath)
-        
-      ElseIf name = "Constructor" Or name = "Destructor" Then
-        // Constructors/Destructors are called via "New ClassName(...)" not by the
-        // literal text "Constructor(". Mark as used if the owning class is instantiated.
-        // FullPath is "Class.Constructor" or "Module.Class.Constructor" -- take the
-        // second-to-last segment to get the owning class name.
-        Var ownerClass As String = element.ParentClass
-        If ownerClass.Trim = "" And element.FullPath.Contains(".") Then
-          Var ownerParts() As String = element.FullPath.Split(".")
-          Var lastIdx As Integer = ownerParts.Count - 1
-          If lastIdx >= 1 Then
-            ownerClass = ownerParts(lastIdx - 1)
-          End If
-        End If
-        
-        Var isCalled As Boolean = False
-        If ownerClass.Trim <> "" Then
-          rx.SearchPattern = "\bNew\s+" + RegExEscape(ownerClass) + "\b"
-          isCalled = (rx.Search(cleanedText) <> Nil)
-          If Not isCalled Then
-            // Also check "As OwnerClass" for typed variables / parameters
-            rx.SearchPattern = "\bAs\s+" + RegExEscape(ownerClass) + "\b"
-            isCalled = (rx.Search(cleanedText) <> Nil)
-          End If
-        End If
-        element.IsUsed = isCalled
-        Logger.Log("Constructor " + element.FullPath + " -> owner=" + ownerClass + " used=" + isCalled.ToString)
-        
-      Else
-        // Regular methods: whole-identifier match, optionally qualified
-        // ("." + name) and followed by "(" for a real call
-        rx.SearchPattern = "(?:\.|\b)" + escapedName + "\s*\("
-        Var isCalled As Boolean = (rx.Search(cleanedText) <> Nil)
-        
-        If Not isCalled Then
-          rx.SearchPattern = "AddressOf\s+" + escapedName + "\b"
-          isCalled = (rx.Search(cleanedText) <> Nil)
-        End If
-        
-        element.IsUsed = isCalled
-      End If
-      
-    Case "CLASS"
-      // App is always instantiated implicitly by the Xojo runtime.
-      If name = "App" Then
-        element.IsUsed = True
-      Else
-        rx.SearchPattern = "\bNew\s+" + escapedName + "\b"
-        Var isCalled As Boolean = (rx.Search(cleanedText) <> Nil)
-        
-        If Not isCalled Then
-          rx.SearchPattern = "\bAs\s+" + escapedName + "\b"
-          isCalled = (rx.Search(cleanedText) <> Nil)
-        End If
-        
-        If Not isCalled Then
-          rx.SearchPattern = "\bInherits\s+" + escapedName + "\b"
-          isCalled = (rx.Search(cleanedText) <> Nil)
-        End If
-        
-        // A class containing framework event handlers is runtime-instantiated
-        // even if no "New ClassName" appears in source (e.g. Window subclasses).
-        If Not isCalled Then
-          For Each candidate As CodeElement In allElements
-            If candidate.ElementType = "METHOD" And IsSystemMethod(candidate.Name) And _
-              candidate.FullPath.BeginsWith(name + ".") Then
-              isCalled = True
-              Exit For
-            End If
-          Next
-        End If
-        
-        element.IsUsed = isCalled
-      End If
-      
-    Case "MODULE"
-      rx.SearchPattern = "\b" + escapedName + "\."
-      element.IsUsed = (rx.Search(cleanedText) <> Nil)
-      
-    Case "PROPERTY", "VARIABLE"
-      rx.SearchPattern = "\." + escapedName + "\b"
-      Var isCalled As Boolean = (rx.Search(cleanedText) <> Nil)
-      
-      If Not isCalled Then
-        rx.SearchPattern = "\b" + escapedName + "\s*="
-        isCalled = (rx.Search(cleanedText) <> Nil)
-      End If
-      
-      If Not isCalled Then
-        rx.SearchPattern = "\b" + escapedName + "\b"
-        isCalled = (rx.Search(cleanedText) <> Nil)
-      End If
-      
-      element.IsUsed = isCalled
-    End Select
-  Next
-  
-  Logger.Log("=== MARKUSEDELEMENTS COMPLETED ===")
+		  // Private Sub MarkUsedElements(cleanedText As String, allElements() As CodeElement)
+		  Logger.Log("=== MARKUSEDELEMENTS STARTED ===")
+		  Var totalStr As String = allElements.Count.ToString
+		  Logger.Log("Total elements to check: " + totalStr)
+		  Var cleanedLengthStr As String = cleanedText.Length.ToString
+		  Logger.Log("Cleaned text length: " + cleanedLengthStr)
+		  
+		  // Count system methods (event handlers)
+		  Var systemMethodCount As Integer = 0
+		  For Each element As CodeElement In allElements
+		    If element.ElementType = "METHOD" And IsSystemMethod(element.Name) Then
+		      Var countPlus As Integer = systemMethodCount + 1
+		      systemMethodCount = countPlus
+		      Logger.Log("Event handler: " + element.FullPath)
+		    End If
+		  Next
+		  
+		  Var handlerCountStr As String = systemMethodCount.ToString
+		  Logger.Log("Total event handlers found: " + handlerCountStr)
+		  
+		  Var unusedEventHandlers() As String
+		  Var rx As New RegEx
+		  rx.Options.CaseSensitive = False
+		  
+		  For Each element As CodeElement In allElements
+		    Var name As String = element.Name
+		    If name.Trim = "" Then Continue
+		    Var escapedName As String = RegExEscape(name)
+		    
+		    Select Case element.ElementType
+		    Case "METHOD"
+		      If IsSystemMethod(name) Then
+		        // Event handlers: check if explicitly called by full path, since the
+		        // bare name (e.g. "Pressed") is far too common to search alone
+		        Var fullName As String = element.FullPath
+		        rx.SearchPattern = "\b" + RegExEscape(fullName) + "\s*\("
+		        Var isCalled As Boolean = (rx.Search(cleanedText) <> Nil)
+		        
+		        If Not isCalled Then
+		          rx.SearchPattern = "AddressOf\s+" + RegExEscape(fullName) + "\b"
+		          isCalled = (rx.Search(cleanedText) <> Nil)
+		        End If
+		        
+		        If isCalled Then
+		          element.IsUsed = True
+		          Logger.Log("Event handler USED: " + fullName)
+		        Else
+		          element.IsUsed = False
+		          unusedEventHandlers.Add(fullName)
+		          Logger.Log("Event handler UNUSED: " + fullName)
+		        End If
+		      ElseIf name = "Constructor" Then
+		        // Constructors are never called by the literal text "Constructor(" -
+		        // callers write "New ClassName(...)" instead. Treat a constructor as
+		        // used if its owning class is used (New/As/Inherits/instantiated, or
+		        // implicitly via the runtime), since that owning-class check already
+		        // covers the real evidence of construction.
+		        Var ownerClass As String = element.ParentClass
+		        If ownerClass.Trim = "" And element.FullPath.Contains(".") Then
+		          Var ownerParts() As String = element.FullPath.Split(".")
+		          ownerClass = ownerParts(0)
+		        End If
+		        
+		        Var isCalled As Boolean = False
+		        If ownerClass.Trim <> "" Then
+		          rx.SearchPattern = "\bNew\s+" + RegExEscape(ownerClass) + "\b"
+		          isCalled = (rx.Search(cleanedText) <> Nil)
+		        End If
+		        element.IsUsed = isCalled
+		        Continue
+		      Else
+		        // Regular methods: whole-identifier match, optionally qualified
+		        // ("." + name) and followed by "(" for a real call
+		        rx.SearchPattern = "(?:\.|\b)" + escapedName + "\s*\("
+		        Var isCalled As Boolean = (rx.Search(cleanedText) <> Nil)
+		        
+		        If Not isCalled Then
+		          rx.SearchPattern = "AddressOf\s+" + escapedName + "\b"
+		          isCalled = (rx.Search(cleanedText) <> Nil)
+		        End If
+		        
+		        element.IsUsed = isCalled
+		      End If
+		      
+		    Case "CLASS"
+		      // The App class is always instantiated implicitly by the Xojo runtime
+		      // (every desktop/iOS app has exactly one), regardless of which lifecycle
+		      // methods it happens to override, and never appears as "New App" or
+		      // "As App" in source. Treat it as always used.
+		      If name = "App" Then
+		        element.IsUsed = True
+		        
+		      Else
+		        rx.SearchPattern = "\bNew\s+" + escapedName + "\b"
+		        Var isCalled As Boolean = (rx.Search(cleanedText) <> Nil)
+		        
+		        If Not isCalled Then
+		          rx.SearchPattern = "\bAs\s+" + escapedName + "\b"
+		          isCalled = (rx.Search(cleanedText) <> Nil)
+		        End If
+		        
+		        If Not isCalled Then
+		          rx.SearchPattern = "\bInherits\s+" + escapedName + "\b"
+		          isCalled = (rx.Search(cleanedText) <> Nil)
+		        End If
+		        
+		        // A class is also considered used if it contains at least one framework
+		        // event/lifecycle method (Opening, Closing, Constructor, etc., per
+		        // IsSystemMethod) - those are invoked directly by the Xojo runtime
+		        // (e.g. any Window subclass) with no "New ClassName" ever
+		        // appearing in source.
+		        If Not isCalled Then
+		          For Each candidate As CodeElement In allElements
+		            If candidate.ElementType = "METHOD" And IsSystemMethod(candidate.Name) And _
+		              candidate.FullPath.BeginsWith(name + ".") Then
+		              isCalled = True
+		              Exit For
+		            End If
+		          Next
+		        End If
+		        
+		        element.IsUsed = isCalled
+		      End If
+		      
+		    Case "MODULE"
+		      rx.SearchPattern = "\b" + escapedName + "\."
+		      element.IsUsed = (rx.Search(cleanedText) <> Nil)
+		      
+		    Case "PROPERTY", "VARIABLE"
+		      rx.SearchPattern = "\." + escapedName + "\b"
+		      Var isCalled As Boolean = (rx.Search(cleanedText) <> Nil)
+		      
+		      If Not isCalled Then
+		        rx.SearchPattern = "\b" + escapedName + "\s*="
+		        isCalled = (rx.Search(cleanedText) <> Nil)
+		      End If
+		      
+		      If Not isCalled Then
+		        // Bare reference to the property/variable name as a whole word,
+		        // e.g. inside an expression that reads it without assigning
+		        rx.SearchPattern = "\b" + escapedName + "\b"
+		        isCalled = (rx.Search(cleanedText) <> Nil)
+		      End If
+		      
+		      element.IsUsed = isCalled
+		    End Select
+		  Next
+		  
+		  // Log summary
+		  Var unusedCountStr As String = unusedEventHandlers.Count.ToString
+		  Logger.Log("Found " + unusedCountStr + " unused event handlers")
+		  For Each handler As String In unusedEventHandlers
+		    Logger.Log("  - " + handler)
+		  Next
+		  
 		End Sub
 	#tag EndMethod
 
@@ -1849,9 +1883,7 @@ Protected Class ProjectAnalyzer
 	#tag EndMethod
 
 	#tag Method, Flags = &h0
-		Sub ScanProject(projectFile As FolderItem)
-		  // Sub ScanProject(projectFile As FolderItem)
-		  // projectFile is the .xojo_project manifest file (not a folder).
+		Sub ScanProject(folder As FolderItem)
 		  Logger.Log("=== ScanProject CALLED ===")
 		  AllElements.RemoveAll
 		  ClassElements.RemoveAll
@@ -1859,10 +1891,10 @@ Protected Class ProjectAnalyzer
 		  ModuleElements.RemoveAll
 		  ElementLookup.RemoveAll
 		  
-		  If projectFile = Nil Or Not projectFile.Exists Then Return
+		  If folder = Nil Or Not folder.Exists Then Return
 		  
 		  Var cp As New CodeParser
-		  cp.ScanProjectForDeclarations(projectFile)
+		  cp.ScanProjectForDeclarations(folder)
 		  
 		  Var parsed() As CodeElement = cp.GetAllElements()
 		  For Each element As CodeElement In parsed

@@ -499,24 +499,15 @@ End
 #tag Events btnScan
 	#tag Event
 		Sub Pressed()
-		  // Select the Xojo project file
-		  Var xojoProjectType As New FileType
-		  xojoProjectType.Name = "xojo/project"
-		  xojoProjectType.Extensions = ".xojo_project"
+		  // Select the Xojo project folder
+		  Var folder As FolderItem = FolderItem.ShowSelectFolderDialog
 		  
-		  Var dlg As New OpenFileDialog
-		  dlg.Title = "Select a .xojo_project File"
-		  dlg.PromptText = "Select the Xojo project to analyze"
-		  dlg.Filter = xojoProjectType
-		  
-		  Var projectFile As FolderItem = dlg.ShowModal
-		  
-		  If projectFile = Nil Or Not projectFile.Exists Then
+		  If folder = Nil Or Not folder.Exists Then
 		    Return
 		  End If
 		  
-		  // Store the project's parent folder for later use (report titles, etc.)
-		  mLastScannedFolder = projectFile.Parent
+		  // Store the folder for later use
+		  mLastScannedFolder = folder
 		  
 		  // Clear previous results
 		  txtResults.Text = ""
@@ -525,10 +516,10 @@ End
 		  // Create new analyzer
 		  mAnalyzer = New ProjectAnalyzer
 		  
-		  // Scan the project using the .xojo_project manifest
-		  mAnalyzer.ScanProject(projectFile)
+		  // Scan the project
+		  mAnalyzer.ScanProject(folder)
 		  
-		  // After mAnalyzer.ScanProject(projectFile)
+		  // After mAnalyzer.ScanProject(folder)
 		  Logger.Log("=== CHECKING ELEMENTS ===")
 		  
 		  Var all() As CodeElement = mAnalyzer.GetAllElements()
@@ -540,7 +531,7 @@ End
 		  End If
 		  
 		  // Build relationships between elements
-		  mAnalyzer.BuildRelationships(mLastScannedFolder)
+		  mAnalyzer.BuildRelationships(folder)
 		  
 		  // 🔥 DETECT UNUSED CODE - THIS WAS MISSING!
 		  Var deadCode() As CodeSmell = mAnalyzer.DetectDeadCode()

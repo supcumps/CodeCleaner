@@ -55,12 +55,7 @@ Protected Class CodeParser
 		    ElseIf IsPropertyDeclaration(trimmedLine) Then
 		      ProcessPropertyDeclaration(trimmedLine, context)
 		      
-		    ElseIf trimmedLine.BeginsWith("#tag EndMethod") Or trimmedLine.BeginsWith("#tag EndEvent") Then
-		      // Authoritative method-end signal from Xojo file format -- always correct
-		      FinalizeMethod(context)
-		      
 		    ElseIf IsEndMethodStatement(trimmedLine) Then
-		      // Fallback: bare End Sub / End Function (belt-and-suspenders)
 		      FinalizeMethod(context)
 		      
 		    Else
@@ -620,14 +615,18 @@ Protected Class CodeParser
 	#tag EndMethod
 	#tag Method, Flags = &h0
 		Function IsEndMethodStatement(line As String) As Boolean
-		  // Returns True ONLY for the closing keyword of a Sub/Function/Property accessor.
-		  // Does NOT match End If / End For / End While / End Select / End Try etc.
-		  // #tag EndMethod / #tag EndEvent are handled separately in ParseFileContent.
+		  // Private Function IsEndMethodStatement(line As String) As Boolean
+		  // Check if line marks the end of a method/function
+		  
 		  Var upper As String = line.Uppercase.Trim
-		  Return upper = "END SUB" Or _
+		  
+		  Return upper = "END" Or _
+		  upper = "END SUB" Or _
 		  upper = "END FUNCTION" Or _
 		  upper = "END GET" Or _
-		  upper = "END SET"
+		  upper = "END SET" Or _
+		  upper.BeginsWith("END ")
+		  
 		End Function
 	#tag EndMethod
 	#tag Method, Flags = &h0
@@ -742,28 +741,26 @@ Protected Class CodeParser
 		End Function
 	#tag EndMethod
 	#tag Method, Flags = &h0
-		Sub ScanProjectForDeclarations(projectFile As FolderItem)
-		  // Sub ScanProjectForDeclarations(projectFile As FolderItem)
-		  // Discovers source files via the .xojo_project manifest rather than
-		  // recursing through the folder. This is the authoritative file list -
-		  // it won't pick up orphaned files, and it will flag manifest entries
-		  // whose backing file is missing on disk.
+		Sub ScanProjectForDeclarations(folder As FolderItem)
+		  If folder = Nil Or Not folder.Exists Then Return
 		  
-		  If projectFile = Nil Or Not projectFile.Exists Then
-		    Logger.Log("ScanProjectForDeclarations: project file is missing")
-		    Return
-		  End If
-		  
-		  Var entries() As ManifestEntry = ParseProjectManifest(projectFile)
-		  
-		  For Each entry As ManifestEntry In entries
-		    If entry.IsResolved Then
-		      ProcessSourceFile(entry.SourceFile)
-		    Else
-		      Logger.Log("ScanProjectForDeclarations: skipping unresolved entry " + entry.Name + " (" + entry.FileName + ")")
-		    End If
+		  For Each item As FolderItem In folder.Children
+		    Try
+		      If item = Nil Then Continue
+		      
+		      If item.IsFolder Then
+		        ScanProjectForDeclarations(item)
+		      ElseIf IsXojoSourceFile(item) Then
+		        ProcessSourceFile(item)
+		      End If
+		      
+		    Catch e As RuntimeException
+		      Logger.Log("Error processing item: " + If(item <> Nil, item.Name, "unknown"))
+		      Continue
+		    End Try
 		  Next
 		  
+		  // After building relationships and error analysis
 		End Sub
 	#tag EndMethod
 
@@ -838,99 +835,6 @@ Protected Class CodeParser
 		  Loop Until pos < 0
 		  
 		  Return count
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h0
-		Function ParseProjectManifest(projectFile As FolderItem) As ManifestEntry()
-		  // Function ParseProjectManifest(projectFile As FolderItem) As ManifestEntry()
-		  // Reads a .xojo_project manifest file and returns the authoritative list of
-		  // analyzable source entries (Class, Module, DesktopWindow, MenuBar).
-		  // Each entry's SourceFile is the resolved FolderItem (Nil if missing on disk).
-		  
-		  Var entries() As ManifestEntry
-		  
-		  If projectFile = Nil Or Not projectFile.Exists Then
-		    Logger.Log("ParseProjectManifest: project file is missing")
-		    Return entries
-		  End If
-		  
-		  Var parentFolder As FolderItem = projectFile.Parent
-		  If parentFolder = Nil Then
-		    Logger.Log("ParseProjectManifest: could not resolve parent folder of " + projectFile.Name)
-		    Return entries
-		  End If
-		  
-		  Var tis As TextInputStream = TextInputStream.Open(projectFile)
-		  If tis = Nil Then
-		    Logger.Log("ParseProjectManifest: could not open " + projectFile.Name)
-		    Return entries
-		  End If
-		  
-		  Var fileContent As String = tis.ReadAll
-		  tis.Close
-		  
-		  Var lines() As String = fileContent.Split(EndOfLine)
-		  
-		  For Each rawLine As String In lines
-		    Var line As String = rawLine.Trim
-		    If line.Trim = "" Then Continue
-		    
-		    Var elementType As String = ""
-		    
-		    If line.BeginsWith("Class=") Then
-		      elementType = "CLASS"
-		    ElseIf line.BeginsWith("Module=") Then
-		      elementType = "MODULE"
-		    ElseIf line.BeginsWith("DesktopWindow=") Then
-		      elementType = "WINDOW"
-		    ElseIf line.BeginsWith("MenuBar=") Then
-		      elementType = "MENUBAR"
-		    Else
-		      Continue
-		    End If
-		    
-		    Var entry As ManifestEntry = ParseManifestLine(line, elementType, parentFolder)
-		    If entry <> Nil Then
-		      entries.Add(entry)
-		    End If
-		  Next
-		  
-		  Logger.Log("ParseProjectManifest: found " + entries.Count.ToString + " analyzable entries")
-		  
-		  Return entries
-		End Function
-	#tag EndMethod
-
-	#tag Method, Flags = &h21
-		Function ParseManifestLine(line As String, elementType As String, parentFolder As FolderItem) As ManifestEntry
-		  // Private Function ParseManifestLine(line As String, elementType As String, parentFolder As FolderItem) As ManifestEntry
-		  // Parses one manifest line of the form:
-		  //   Class=Name;FileName.xojo_code;&hHASH1;&hHASH2;flag
-		  // Returns Nil if the line cannot be parsed.
-		  
-		  Var equalsPos As Integer = line.IndexOf("=")
-		  If equalsPos < 0 Then Return Nil
-		  
-		  Var afterEquals As String = line.Mid(equalsPos + 2)
-		  Var parts() As String = afterEquals.Split(";")
-		  
-		  If parts.Count < 2 Then Return Nil
-		  
-		  Var entryName As String = parts(0).Trim
-		  Var fileName As String = parts(1).Trim
-		  
-		  If entryName.Trim = "" Or fileName.Trim = "" Then Return Nil
-		  
-		  Var resolvedFile As FolderItem = parentFolder.Child(fileName)
-		  If resolvedFile = Nil Or Not resolvedFile.Exists Then
-		    Logger.Log("ParseManifestLine: manifest references missing file " + fileName + " for " + entryName)
-		    resolvedFile = Nil
-		  End If
-		  
-		  Var entry As New ManifestEntry(entryName, fileName, elementType, resolvedFile)
-		  
-		  Return entry
 		End Function
 	#tag EndMethod
 

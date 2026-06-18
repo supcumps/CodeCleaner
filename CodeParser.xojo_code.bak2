@@ -55,12 +55,7 @@ Protected Class CodeParser
 		    ElseIf IsPropertyDeclaration(trimmedLine) Then
 		      ProcessPropertyDeclaration(trimmedLine, context)
 		      
-		    ElseIf trimmedLine.BeginsWith("#tag EndMethod") Or trimmedLine.BeginsWith("#tag EndEvent") Then
-		      // Authoritative method-end signal from Xojo file format -- always correct
-		      FinalizeMethod(context)
-		      
 		    ElseIf IsEndMethodStatement(trimmedLine) Then
-		      // Fallback: bare End Sub / End Function (belt-and-suspenders)
 		      FinalizeMethod(context)
 		      
 		    Else
@@ -620,14 +615,18 @@ Protected Class CodeParser
 	#tag EndMethod
 	#tag Method, Flags = &h0
 		Function IsEndMethodStatement(line As String) As Boolean
-		  // Returns True ONLY for the closing keyword of a Sub/Function/Property accessor.
-		  // Does NOT match End If / End For / End While / End Select / End Try etc.
-		  // #tag EndMethod / #tag EndEvent are handled separately in ParseFileContent.
+		  // Private Function IsEndMethodStatement(line As String) As Boolean
+		  // Check if line marks the end of a method/function
+		  
 		  Var upper As String = line.Uppercase.Trim
-		  Return upper = "END SUB" Or _
+		  
+		  Return upper = "END" Or _
+		  upper = "END SUB" Or _
 		  upper = "END FUNCTION" Or _
 		  upper = "END GET" Or _
-		  upper = "END SET"
+		  upper = "END SET" Or _
+		  upper.BeginsWith("END ")
+		  
 		End Function
 	#tag EndMethod
 	#tag Method, Flags = &h0
@@ -742,28 +741,26 @@ Protected Class CodeParser
 		End Function
 	#tag EndMethod
 	#tag Method, Flags = &h0
-		Sub ScanProjectForDeclarations(projectFile As FolderItem)
-		  // Sub ScanProjectForDeclarations(projectFile As FolderItem)
-		  // Discovers source files via the .xojo_project manifest rather than
-		  // recursing through the folder. This is the authoritative file list -
-		  // it won't pick up orphaned files, and it will flag manifest entries
-		  // whose backing file is missing on disk.
+		Sub ScanProjectForDeclarations(folder As FolderItem)
+		  If folder = Nil Or Not folder.Exists Then Return
 		  
-		  If projectFile = Nil Or Not projectFile.Exists Then
-		    Logger.Log("ScanProjectForDeclarations: project file is missing")
-		    Return
-		  End If
-		  
-		  Var entries() As ManifestEntry = ParseProjectManifest(projectFile)
-		  
-		  For Each entry As ManifestEntry In entries
-		    If entry.IsResolved Then
-		      ProcessSourceFile(entry.SourceFile)
-		    Else
-		      Logger.Log("ScanProjectForDeclarations: skipping unresolved entry " + entry.Name + " (" + entry.FileName + ")")
-		    End If
+		  For Each item As FolderItem In folder.Children
+		    Try
+		      If item = Nil Then Continue
+		      
+		      If item.IsFolder Then
+		        ScanProjectForDeclarations(item)
+		      ElseIf IsXojoSourceFile(item) Then
+		        ProcessSourceFile(item)
+		      End If
+		      
+		    Catch e As RuntimeException
+		      Logger.Log("Error processing item: " + If(item <> Nil, item.Name, "unknown"))
+		      Continue
+		    End Try
 		  Next
 		  
+		  // After building relationships and error analysis
 		End Sub
 	#tag EndMethod
 
