@@ -456,7 +456,7 @@ Protected Class ProjectAnalyzer
 		  For Each method As CodeElement In allMethods
 		    ' Check if method has risky operations
 		    Var hasRiskyOps As Boolean = False
-		    Var code As String = method.Code.Uppercase
+		    Var code As String = CleanCodeForAnalysis(method.Code).Uppercase
 		    
 		    ' Database operations
 		    If code.IndexOf("DATABASE") >= 0 Or code.IndexOf("RECORDSET") >= 0 Or _
@@ -477,8 +477,7 @@ Protected Class ProjectAnalyzer
 		    End If
 		    
 		    ' Type conversions
-		    If code.IndexOf(".TOINTEGER") >= 0 Or code.IndexOf(".TODOUBLE") >= 0 Or _
-		      code.IndexOf("VAL(") >= 0 Or code.IndexOf("CTYPE(") >= 0 Then
+		    If code.IndexOf("CTYPE(") >= 0 Then
 		      hasRiskyOps = True
 		    End If
 		    
@@ -486,7 +485,7 @@ Protected Class ProjectAnalyzer
 		      methodsWithRiskyOps = methodsWithRiskyOps + 1
 		      
 		      ' Check if it has error handling
-		      If code.IndexOf("TRY") >= 0 And code.IndexOf("CATCH") >= 0 Then
+		      If code.IndexOf("CATCH") >= 0 Then
 		        methodsWithErrorHandling = methodsWithErrorHandling + 1
 		      End If
 		    End If
@@ -731,6 +730,7 @@ Protected Class ProjectAnalyzer
 		  
 		  // Remove string literals first (so // or ' inside a string isn't mistaken for a comment)
 		  Var rx0 As New RegEx
+		  rx0.Options.ReplaceAllMatches = True
 		  rx0.SearchPattern = Chr(34) + ".*?" + Chr(34)
 		  rx0.ReplacementPattern = ""
 		  Var cleanedText As String = rx0.Replace(content)
@@ -739,12 +739,14 @@ Protected Class ProjectAnalyzer
 		  // "// Public Sub ClassName.MethodName(...)" headers CodeParser stores at the
 		  // top of every method's Code property)
 		  Var rx1 As New RegEx
+		  rx1.Options.ReplaceAllMatches = True
 		  rx1.SearchPattern = "//[^\r\n]*"
 		  rx1.ReplacementPattern = ""
 		  cleanedText = rx1.Replace(cleanedText)
 		  
 		  // Remove ' line comments
 		  Var rx2 As New RegEx
+		  rx2.Options.ReplaceAllMatches = True
 		  rx2.SearchPattern = "'[^\r\n]*"
 		  rx2.ReplacementPattern = ""
 		  cleanedText = rx2.Replace(cleanedText)
@@ -1850,6 +1852,7 @@ Protected Class ProjectAnalyzer
 
 	#tag Method, Flags = &h0
 		Sub ScanProject(projectFile As FolderItem)
+		  Try
 		  // Sub ScanProject(projectFile As FolderItem)
 		  // projectFile is the .xojo_project manifest file (not a folder).
 		  Logger.Log("=== ScanProject CALLED ===")
@@ -1878,6 +1881,9 @@ Protected Class ProjectAnalyzer
 		    End Select
 		  Next
 		  
+		  Catch e As RuntimeException
+		    Logger.Log("ScanProject error: " + e.Message)
+		  End Try
 		End Sub
 	#tag EndMethod
 

@@ -499,6 +499,7 @@ End
 #tag Events btnScan
 	#tag Event
 		Sub Pressed()
+		  Try
 		  // Select the Xojo project file
 		  Var xojoProjectType As New FileType
 		  xojoProjectType.Name = "xojo/project"
@@ -668,6 +669,9 @@ End
 		  Var allElements() As CodeElement = mAnalyzer.GetAllElements()
 		  Var elementCountStr As String = allElements.Count.ToString
 		  MessageBox("Scan complete! Found " + elementCountStr + " code elements.")
+		  Catch e As RuntimeException
+		    MessageBox("Scan failed: " + e.Message)
+		  End Try
 		End Sub
 	#tag EndEvent
 #tag EndEvents
@@ -709,6 +713,7 @@ End
 #tag Events btnRefactoringSuggestions
 	#tag Event
 		Sub Pressed()
+		  Try
 		  If mAnalyzer = Nil Then
 		    MessageBox("Please scan a project first!")
 		    Return
@@ -746,12 +751,16 @@ End
 		  Else
 		    MessageBox("Error generating refactoring suggestions report.")
 		  End If
+		  Catch e As RuntimeException
+		    MessageBox("Error generating refactoring report: " + e.Message)
+		  End Try
 		End Sub
 	#tag EndEvent
 #tag EndEvents
 #tag Events GenerateHotSpotsPDFButton
 	#tag Event
 		Sub Pressed()
+		  Try
 		  //Sub GenerateHotSpotsPDFButton_Pressed()
 		  If mAnalyzer = Nil Then
 		    MessageBox("Please scan a project first")
@@ -814,6 +823,9 @@ End
 		    
 		  End If
 		  
+		  Catch e As RuntimeException
+		    MessageBox("Error generating hot spots report: " + e.Message)
+		  End Try
 		End Sub
 	#tag EndEvent
 #tag EndEvents
@@ -858,6 +870,7 @@ End
 #tag Events btnGenerateDependencyGraph
 	#tag Event
 		Sub Pressed()
+		  Try
 		  // Private Sub btnGenerateDependencyGraph_Pressed()
 		  // Let user choose where to save
 		  Var dlg As New SelectFolderDialog
@@ -875,12 +888,16 @@ End
 		    gg.GenerateDependencyGraphPNG(mAnalyzer.GetAllElements(), folder)
 		  End If
 		  
+		  Catch e As RuntimeException
+		    MessageBox("Error generating dependency graph: " + e.Message)
+		  End Try
 		End Sub
 	#tag EndEvent
 #tag EndEvents
 #tag Events btnGenerateInteractiveGraph
 	#tag Event
 		Sub Pressed()
+		  Try
 		  // Private Sub btnGenerateInteractiveGraph_Pressed()
 		  Var dlg As New SelectFolderDialog
 		  dlg.Title = "Select folder to save interactive graph"
@@ -896,6 +913,9 @@ End
 		    gg.GenerateInteractiveDependencyGraph(mAnalyzer.GetAllElements(), folder)
 		  End If
 		  
+		  Catch e As RuntimeException
+		    MessageBox("Error generating interactive graph: " + e.Message)
+		  End Try
 		End Sub
 	#tag EndEvent
 #tag EndEvents

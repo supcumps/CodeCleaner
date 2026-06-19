@@ -13,10 +13,21 @@ Inherits DesktopApplication
 		    Next
 		  End If
 		  
-		  Var f As New FolderItem("/tmp/xmcp_debug.log")
-		  Var stream As TextOutputStream = TextOutputStream.Open(f)
-		  stream.Write(msg)
-		  stream.Close
+		  Try
+		  
+		    Var f As New FolderItem("/tmp/xmcp_debug.log")
+		  
+		    Var stream As TextOutputStream = TextOutputStream.Open(f)
+		  
+		    stream.Write(msg)
+		  
+		    stream.Close
+		  
+		  Catch e As RuntimeException
+		  
+		    System.DebugLog("UnhandledException: failed to write crash log: " + e.Message)
+		  
+		  End Try
 		  
 		End Sub
 	#tag EndMethod

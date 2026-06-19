@@ -743,6 +743,7 @@ Protected Class CodeParser
 	#tag EndMethod
 	#tag Method, Flags = &h0
 		Sub ScanProjectForDeclarations(projectFile As FolderItem)
+		  Try
 		  // Sub ScanProjectForDeclarations(projectFile As FolderItem)
 		  // Discovers source files via the .xojo_project manifest rather than
 		  // recursing through the folder. This is the authoritative file list -
@@ -764,6 +765,9 @@ Protected Class CodeParser
 		    End If
 		  Next
 		  
+		  Catch e As RuntimeException
+		    Logger.Log("ScanProjectForDeclarations error: " + e.Message)
+		  End Try
 		End Sub
 	#tag EndMethod
 
@@ -843,6 +847,7 @@ Protected Class CodeParser
 
 	#tag Method, Flags = &h0
 		Function ParseProjectManifest(projectFile As FolderItem) As ManifestEntry()
+		  Try
 		  // Function ParseProjectManifest(projectFile As FolderItem) As ManifestEntry()
 		  // Reads a .xojo_project manifest file and returns the authoritative list of
 		  // analyzable source entries (Class, Module, DesktopWindow, MenuBar).
@@ -899,11 +904,15 @@ Protected Class CodeParser
 		  Logger.Log("ParseProjectManifest: found " + entries.Count.ToString + " analyzable entries")
 		  
 		  Return entries
+		  Catch e As RuntimeException
+		    Logger.Log("ParseProjectManifest error: " + e.Message)
+		  End Try
 		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Function ParseManifestLine(line As String, elementType As String, parentFolder As FolderItem) As ManifestEntry
+		  Try
 		  // Private Function ParseManifestLine(line As String, elementType As String, parentFolder As FolderItem) As ManifestEntry
 		  // Parses one manifest line of the form:
 		  //   Class=Name;FileName.xojo_code;&hHASH1;&hHASH2;flag
@@ -931,6 +940,9 @@ Protected Class CodeParser
 		  Var entry As New ManifestEntry(entryName, fileName, elementType, resolvedFile)
 		  
 		  Return entry
+		  Catch e As RuntimeException
+		    Logger.Log("ParseManifestLine error: " + e.Message)
+		  End Try
 		End Function
 	#tag EndMethod
 

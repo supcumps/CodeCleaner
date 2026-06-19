@@ -642,6 +642,7 @@ Protected Class GraphGenerator
 	#tag EndMethod
 	#tag Method, Flags = &h0
 		Sub GenerateDependencyGraphPNG(elements() As CodeElement, savePath As FolderItem)
+		  Try
 		  // Public Sub GenerateDependencyGraphPNG(elements() As CodeElement, savePath As FolderItem)
 		  // Collect methods and their dependencies
 		  Var methodNodes() As MethodNode
@@ -753,6 +754,9 @@ Protected Class GraphGenerator
 		  
 		  MessageBox("Dependency graph saved as PNG!")
 		  
+		  Catch e As RuntimeException
+		    MessageBox("Error generating dependency graph: " + e.Message)
+		  End Try
 		End Sub
 	#tag EndMethod
 	#tag Method, Flags = &h0
