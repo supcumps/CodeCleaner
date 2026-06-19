@@ -44,11 +44,12 @@ Protected Class ProjectAnalyzer
 		    If element.Code.Trim = "" Then Continue
 		    
 		    // Detect error handling patterns
-		    element.HasTryCatch = DetectTryCatchBlocks(element.Code)
-		    element.HasDatabaseOperations = DetectDatabaseOperations(element.Code)
-		    element.HasFileOperations = DetectFileOperations(element.Code)
-		    element.HasNetworkOperations = DetectNetworkOperations(element.Code)
-		    element.HasTypeConversions = DetectTypeConversions(element.Code)
+		    Var cleaned As String = CleanCodeForAnalysis(element.Code)
+		    element.HasTryCatch = DetectTryCatchBlocks(cleaned)
+		    element.HasDatabaseOperations = DetectDatabaseOperations(cleaned)
+		    element.HasFileOperations = DetectFileOperations(cleaned)
+		    element.HasNetworkOperations = DetectNetworkOperations(cleaned)
+		    element.HasTypeConversions = DetectTypeConversions(cleaned)
 		    
 		    // Create error patterns for risky operations without error handling
 		    If Not element.HasTryCatch Then
@@ -1420,40 +1421,20 @@ Protected Class ProjectAnalyzer
 
 	#tag Method, Flags = &h21
 		Private Function DetectTryCatchBlocks(code As String) As Boolean
-		  // Detect if code contains Try/Catch error handling
-		  
+		  // Detect Try/Catch error handling. Caller passes code already cleaned of
+		  // strings/comments, so a bare "CATCH" reliably indicates a real Catch statement.
 		  Var upperCode As String = code.Uppercase
-		  
-		  If upperCode.Contains("TRY") And upperCode.Contains("CATCH") Then
-		    Return True
-		  End If
-		  
-		  Return False
+		  Return upperCode.Contains("CATCH")
 		End Function
 	#tag EndMethod
 
 	#tag Method, Flags = &h21
 		Private Function DetectTypeConversions(code As String) As Boolean
-		  // Detect type conversion operations that could fail
-		  
+		  // Detect type conversions that can actually raise. In API 2, Val/CDbl/.ToInteger/
+		  // .ToDouble return defaults (no exception); only CType can raise (object cast),
+		  // so that is all we flag - matching the quality scorer.
 		  Var upperCode As String = code.Uppercase
-		  
-		  // Type conversions
-		  If upperCode.Contains("VAL(") Then Return True
-		  If upperCode.Contains("CDBL(") Then Return True
-		  If upperCode.Contains("CTYPE(") Then Return True
-		  If upperCode.Contains(".TOINTEGER") Then Return True
-		  If upperCode.Contains(".TODOUBLE") Then Return True
-		  If upperCode.Contains(".FROMSTRING") Then Return True
-		  If upperCode.Contains("INTEGER.FROMSTRING") Then Return True
-		  If upperCode.Contains("DOUBLE.FROMSTRING") Then Return True
-		  If upperCode.Contains("PARSEDATE") Then Return True
-		  
-		  // Division (potential divide by zero)
-		  If upperCode.Contains(" / ") Then Return True
-		  If upperCode.Contains(" \\ ") Then Return True
-		  
-		  Return False
+		  Return upperCode.Contains("CTYPE(")
 		End Function
 	#tag EndMethod
 

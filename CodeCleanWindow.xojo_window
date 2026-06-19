@@ -30,7 +30,7 @@ Begin DesktopWindow CodeCleanWindow
       AllowAutoDeactivate=   True
       AllowFocus      =   True
       AllowTabStop    =   True
-      BackgroundColor =   &c00000000
+      BackgroundColor =   &cA8FBA600
       BevelStyle      =   0
       Bold            =   False
       ButtonStyle     =   0
@@ -42,7 +42,7 @@ Begin DesktopWindow CodeCleanWindow
       FontName        =   "System"
       FontSize        =   0.0
       FontUnit        =   0
-      HasBackgroundColor=   False
+      HasBackgroundColor=   True
       Height          =   22
       Icon            =   0
       IconAlignment   =   0
@@ -113,7 +113,7 @@ Begin DesktopWindow CodeCleanWindow
       Text            =   ""
       TextAlignment   =   0
       TextColor       =   &c000000
-      Tooltip         =   ""
+      Tooltip         =   "Select the .Xojo_Code file you want to analyse"
       Top             =   125
       Transparent     =   False
       Underline       =   False
@@ -500,175 +500,175 @@ End
 	#tag Event
 		Sub Pressed()
 		  Try
-		  // Select the Xojo project file
-		  Var xojoProjectType As New FileType
-		  xojoProjectType.Name = "xojo/project"
-		  xojoProjectType.Extensions = ".xojo_project"
-		  
-		  Var dlg As New OpenFileDialog
-		  dlg.Title = "Select a .xojo_project File"
-		  dlg.PromptText = "Select the Xojo project to analyze"
-		  dlg.Filter = xojoProjectType
-		  
-		  Var projectFile As FolderItem = dlg.ShowModal
-		  
-		  If projectFile = Nil Or Not projectFile.Exists Then
-		    Return
-		  End If
-		  
-		  // Store the project's parent folder for later use (report titles, etc.)
-		  mLastScannedFolder = projectFile.Parent
-		  
-		  // Clear previous results
-		  txtResults.Text = ""
-		  txtResults.Text = "Scanning project files..." + EndOfLine + EndOfLine
-		  
-		  // Create new analyzer
-		  mAnalyzer = New ProjectAnalyzer
-		  
-		  // Scan the project using the .xojo_project manifest
-		  mAnalyzer.ScanProject(projectFile)
-		  
-		  // After mAnalyzer.ScanProject(projectFile)
-		  Logger.Log("=== CHECKING ELEMENTS ===")
-		  
-		  Var all() As CodeElement = mAnalyzer.GetAllElements()
-		  Logger.Log("GetAllElements: " + all.Count.ToString)
-		  
-		  If all.Count > 0 Then
-		    Logger.Log("First element: " + all(0).Name + " (Type: " + all(0).ElementType + ")")
-		    Logger.Log("Second element: " + all(1).Name + " (Type: " + all(1).ElementType + ")")
-		  End If
-		  
-		  // Build relationships between elements
-		  mAnalyzer.BuildRelationships(mLastScannedFolder)
-		  
-		  // 🔥 DETECT UNUSED CODE - THIS WAS MISSING!
-		  Var deadCode() As CodeSmell = mAnalyzer.DetectDeadCode()
-		  
-		  Logger.Log("=== ELEMENT TYPE CHECK ===")
-		  
-		  all() = mAnalyzer.GetAllElements()
-		  Var classes() As CodeElement = mAnalyzer.GetClassElements()
-		  Var modules() As CodeElement = mAnalyzer.GetModuleElements()
-		  Var methods() As CodeElement = mAnalyzer.GetMethodElements()
-		  
-		  Var methodsWithCode As Integer = 0
-		  For Each m As CodeElement In methods
-		    If m.Code.Trim <> "" Then
-		      methodsWithCode = methodsWithCode + 1
+		    // Select the Xojo project file
+		    Var xojoProjectType As New FileType
+		    xojoProjectType.Name = "xojo/project"
+		    xojoProjectType.Extensions = ".xojo_project"
+		    
+		    Var dlg As New OpenFileDialog
+		    dlg.Title = "Select a .xojo_project File"
+		    dlg.PromptText = "Select the Xojo project to analyze"
+		    dlg.Filter = xojoProjectType
+		    
+		    Var projectFile As FolderItem = dlg.ShowModal
+		    
+		    If projectFile = Nil Or Not projectFile.Exists Then
+		      Return
 		    End If
-		  Next
-		  Logger.Log("Methods with code: " + methodsWithCode.ToString + " of " + methods.Count.ToString)
-		  Logger.Log("Methods with calls: " + methods.Count.ToString)  // Will show how many have CallsTo populated
-		  
-		  Logger.Log("Total: " + all.Count.ToString)
-		  Logger.Log("Classes: " + classes.Count.ToString)
-		  Logger.Log("Modules: " + modules.Count.ToString)
-		  Logger.Log("Methods: " + methods.Count.ToString)
-		  
-		  // Show first few elements and their types
-		  For i As Integer = 0 To Min(5, all.Count - 1)
-		    Var indexStr As String = i.ToString
-		    Var nameStr As String = all(i).Name
-		    Var typeStr As String = all(i).ElementType
-		    Logger.Log("Element " + indexStr + ": " + nameStr + " (Type: '" + typeStr + "')")
-		  Next
-		  
-		  // Analyze error handling patterns
-		  mAnalyzer.AnalyzeErrorHandling()
-		  
-		  // DEBUG: Test parameter parsing
-		  Logger.Log("=== PARAMETER PARSING DEBUG ===")
-		  methods() = mAnalyzer.GetMethodElements
-		  Var testCount As Integer = 0
-		  
-		  For Each method As CodeElement In methods
-		    Var codeCheck As String = method.Code.Trim
-		    If codeCheck <> "" And testCount < 5 Then  // Test first 5 methods
-		      Logger.Log("")
-		      Logger.Log("Method: " + method.FullPath)
-		      Logger.Log("Code starts with:")
-		      
-		      // Show first 3 lines of code
-		      Var lines() As String = method.Code.Split(EndOfLine)
-		      For i As Integer = 0 To Min(2, lines.Count - 1)
-		        Var lineNum As String = i.ToString
-		        Logger.Log("  Line " + lineNum + ": " + lines(i))
-		      Next
-		      
-		      // Test parsing
-		      Var cp As New CodeParser
-		      Var result As Dictionary = cp.ParseMethodParameters(method.Code)
-		      Var paramCount As Integer = result.Value("parameterCount")
-		      Var paramCountStr As String = paramCount.ToString
-		      Logger.Log("Detected parameters: " + paramCountStr)
-		      
-		      testCount = testCount + 1
+		    
+		    // Store the project's parent folder for later use (report titles, etc.)
+		    mLastScannedFolder = projectFile.Parent
+		    
+		    // Clear previous results
+		    txtResults.Text = ""
+		    txtResults.Text = "Scanning project files..." + EndOfLine + EndOfLine
+		    
+		    // Create new analyzer
+		    mAnalyzer = New ProjectAnalyzer
+		    
+		    // Scan the project using the .xojo_project manifest
+		    mAnalyzer.ScanProject(projectFile)
+		    
+		    // After mAnalyzer.ScanProject(projectFile)
+		    Logger.Log("=== CHECKING ELEMENTS ===")
+		    
+		    Var all() As CodeElement = mAnalyzer.GetAllElements()
+		    Logger.Log("GetAllElements: " + all.Count.ToString)
+		    
+		    If all.Count > 0 Then
+		      Logger.Log("First element: " + all(0).Name + " (Type: " + all(0).ElementType + ")")
+		      Logger.Log("Second element: " + all(1).Name + " (Type: " + all(1).ElementType + ")")
 		    End If
-		  Next
-		  Logger.Log("=== END DEBUG ===")
-		  Logger.Log("=== PARAMETER EXTRACTION TEST ===")
-		  
-		  Var methodsWithParams As Integer = 0
-		  Var totalParams As Integer = 0
-		  
-		  For Each method As CodeElement In methods
-		    If method.ParameterCount > 0 Then
-		      methodsWithParams = methodsWithParams + 1
-		      totalParams = totalParams + method.ParameterCount
-		      Var paramCountStr As String = method.ParameterCount.ToString
-		      Logger.Log("✓ " + method.Name + ": " + paramCountStr + " params")
-		      Logger.Log("  Parameters: " + method.Parameters)
+		    
+		    // Build relationships between elements
+		    mAnalyzer.BuildRelationships(mLastScannedFolder)
+		    
+		    // 🔥 DETECT UNUSED CODE - THIS WAS MISSING!
+		    Var deadCode() As CodeSmell = mAnalyzer.DetectDeadCode()
+		    
+		    Logger.Log("=== ELEMENT TYPE CHECK ===")
+		    
+		    all() = mAnalyzer.GetAllElements()
+		    Var classes() As CodeElement = mAnalyzer.GetClassElements()
+		    Var modules() As CodeElement = mAnalyzer.GetModuleElements()
+		    Var methods() As CodeElement = mAnalyzer.GetMethodElements()
+		    
+		    Var methodsWithCode As Integer = 0
+		    For Each m As CodeElement In methods
+		      If m.Code.Trim <> "" Then
+		        methodsWithCode = methodsWithCode + 1
+		      End If
+		    Next
+		    Logger.Log("Methods with code: " + methodsWithCode.ToString + " of " + methods.Count.ToString)
+		    Logger.Log("Methods with calls: " + methods.Count.ToString)  // Will show how many have CallsTo populated
+		    
+		    Logger.Log("Total: " + all.Count.ToString)
+		    Logger.Log("Classes: " + classes.Count.ToString)
+		    Logger.Log("Modules: " + modules.Count.ToString)
+		    Logger.Log("Methods: " + methods.Count.ToString)
+		    
+		    // Show first few elements and their types
+		    For i As Integer = 0 To Min(5, all.Count - 1)
+		      Var indexStr As String = i.ToString
+		      Var nameStr As String = all(i).Name
+		      Var typeStr As String = all(i).ElementType
+		      Logger.Log("Element " + indexStr + ": " + nameStr + " (Type: '" + typeStr + "')")
+		    Next
+		    
+		    // Analyze error handling patterns
+		    mAnalyzer.AnalyzeErrorHandling()
+		    
+		    // DEBUG: Test parameter parsing
+		    Logger.Log("=== PARAMETER PARSING DEBUG ===")
+		    methods() = mAnalyzer.GetMethodElements
+		    Var testCount As Integer = 0
+		    
+		    For Each method As CodeElement In methods
+		      Var codeCheck As String = method.Code.Trim
+		      If codeCheck <> "" And testCount < 5 Then  // Test first 5 methods
+		        Logger.Log("")
+		        Logger.Log("Method: " + method.FullPath)
+		        Logger.Log("Code starts with:")
+		        
+		        // Show first 3 lines of code
+		        Var lines() As String = method.Code.Split(EndOfLine)
+		        For i As Integer = 0 To Min(2, lines.Count - 1)
+		          Var lineNum As String = i.ToString
+		          Logger.Log("  Line " + lineNum + ": " + lines(i))
+		        Next
+		        
+		        // Test parsing
+		        Var cp As New CodeParser
+		        Var result As Dictionary = cp.ParseMethodParameters(method.Code)
+		        Var paramCount As Integer = result.Value("parameterCount")
+		        Var paramCountStr As String = paramCount.ToString
+		        Logger.Log("Detected parameters: " + paramCountStr)
+		        
+		        testCount = testCount + 1
+		      End If
+		    Next
+		    Logger.Log("=== END DEBUG ===")
+		    Logger.Log("=== PARAMETER EXTRACTION TEST ===")
+		    
+		    Var methodsWithParams As Integer = 0
+		    Var totalParams As Integer = 0
+		    
+		    For Each method As CodeElement In methods
+		      If method.ParameterCount > 0 Then
+		        methodsWithParams = methodsWithParams + 1
+		        totalParams = totalParams + method.ParameterCount
+		        Var paramCountStr As String = method.ParameterCount.ToString
+		        Logger.Log("✓ " + method.Name + ": " + paramCountStr + " params")
+		        Logger.Log("  Parameters: " + method.Parameters)
+		      End If
+		    Next
+		    
+		    Logger.Log("")
+		    Var methodsWithParamsStr As String = methodsWithParams.ToString
+		    Var totalParamsStr As String = totalParams.ToString
+		    Logger.Log("Methods with parameters: " + methodsWithParamsStr)
+		    Logger.Log("Total parameters: " + totalParamsStr)
+		    
+		    // TEST: Check if code is being captured
+		    methods() = mAnalyzer.GetMethodElements
+		    Logger.Log("=== CODE CAPTURE TEST ===")
+		    Var methodCountStr As String = methods.Count.ToString
+		    Logger.Log("Total methods found: " + methodCountStr)
+		    
+		    methodsWithCode = 0
+		    For Each method As CodeElement In methods
+		      Var codeCheck As String = method.Code.Trim
+		      If codeCheck <> "" Then
+		        methodsWithCode = methodsWithCode + 1
+		        Var codeLengthStr As String = method.Code.Length.ToString
+		        Logger.Log("✅ " + method.Name + " has " + codeLengthStr + " chars")
+		      End If
+		    Next
+		    
+		    Var withCodeStr As String = methodsWithCode.ToString
+		    Var totalMethodsStr As String = methods.Count.ToString
+		    Logger.Log("Methods with code: " + withCodeStr + " of " + totalMethodsStr)
+		    
+		    If methodsWithCode = 0 Then
+		      Logger.Log("❌ NO CODE CAPTURED! Need to update CodeElement and ProjectAnalyzer")
+		    Else
+		      Logger.Log("✅ Code is being captured!")
 		    End If
-		  Next
-		  
-		  Logger.Log("")
-		  Var methodsWithParamsStr As String = methodsWithParams.ToString
-		  Var totalParamsStr As String = totalParams.ToString
-		  Logger.Log("Methods with parameters: " + methodsWithParamsStr)
-		  Logger.Log("Total parameters: " + totalParamsStr)
-		  
-		  // TEST: Check if code is being captured
-		  methods() = mAnalyzer.GetMethodElements
-		  Logger.Log("=== CODE CAPTURE TEST ===")
-		  Var methodCountStr As String = methods.Count.ToString
-		  Logger.Log("Total methods found: " + methodCountStr)
-		  
-		  methodsWithCode = 0
-		  For Each method As CodeElement In methods
-		    Var codeCheck As String = method.Code.Trim
-		    If codeCheck <> "" Then
-		      methodsWithCode = methodsWithCode + 1
-		      Var codeLengthStr As String = method.Code.Length.ToString
-		      Logger.Log("✅ " + method.Name + " has " + codeLengthStr + " chars")
-		    End If
-		  Next
-		  
-		  Var withCodeStr As String = methodsWithCode.ToString
-		  Var totalMethodsStr As String = methods.Count.ToString
-		  Logger.Log("Methods with code: " + withCodeStr + " of " + totalMethodsStr)
-		  
-		  If methodsWithCode = 0 Then
-		    Logger.Log("❌ NO CODE CAPTURED! Need to update CodeElement and ProjectAnalyzer")
-		  Else
-		    Logger.Log("✅ Code is being captured!")
-		  End If
-		  
-		  // Generate text report (keeping your existing functionality)
-		  GenerateTextReport()
-		  
-		  // Enable the export and flowchart buttons
-		  ExportButton.Enabled = True
-		  btnRefactoringSuggestions.Enabled = True
-		  GenerateHotSpotsPDFButton.Enabled = True
-		  btnShowAllHotSpots.Enabled = True
-		  btnGenerateDependencyGraph.Enabled = True
-		  btnGenerateInteractiveGraph.Enabled = True
-		  
-		  Var allElements() As CodeElement = mAnalyzer.GetAllElements()
-		  Var elementCountStr As String = allElements.Count.ToString
-		  MessageBox("Scan complete! Found " + elementCountStr + " code elements.")
+		    
+		    // Generate text report (keeping your existing functionality)
+		    GenerateTextReport()
+		    
+		    // Enable the export and flowchart buttons
+		    ExportButton.Enabled = True
+		    btnRefactoringSuggestions.Enabled = True
+		    GenerateHotSpotsPDFButton.Enabled = True
+		    btnShowAllHotSpots.Enabled = True
+		    btnGenerateDependencyGraph.Enabled = True
+		    btnGenerateInteractiveGraph.Enabled = True
+		    
+		    Var allElements() As CodeElement = mAnalyzer.GetAllElements()
+		    Var elementCountStr As String = allElements.Count.ToString
+		    MessageBox("Scan complete! Found " + elementCountStr + " code elements.")
 		  Catch e As RuntimeException
 		    MessageBox("Scan failed: " + e.Message)
 		  End Try
@@ -714,43 +714,43 @@ End
 	#tag Event
 		Sub Pressed()
 		  Try
-		  If mAnalyzer = Nil Then
-		    MessageBox("Please scan a project first!")
-		    Return
-		  End If
-		  
-		  // Check if we have suggestions
-		  Var allMethods() As CodeElement = mAnalyzer.GetMethodElements()
-		  Var hasSuggestions As Boolean = False
-		  
-		  For Each method As CodeElement In allMethods
-		    If method.RefactoringSuggestions.Count > 0 Then
-		      hasSuggestions = True
-		      Exit For
+		    If mAnalyzer = Nil Then
+		      MessageBox("Please scan a project first!")
+		      Return
 		    End If
-		  Next
-		  
-		  If Not hasSuggestions Then
-		    MessageBox("No refactoring suggestions found. Your code looks good!")
-		    Return
-		  End If
-		  
-		  // Get save location
-		  Var dlg As New SaveFileDialog
-		  dlg.SuggestedFileName = "RefactoringSuggestions_" + DateTime.Now.ToString("yyyy-MM-dd_HHmm") + ".pdf"
-		  dlg.Filter = "PDF Files (*.pdf)|*.pdf"
-		  
-		  Var saveFile As FolderItem = dlg.ShowModal()
-		  If saveFile = Nil Then Return
-		  
-		  // Generate the PDF
-		  Var generator As New ReportGenerator
-		  If generator.GenerateRefactoringSuggestionsReport(mAnalyzer, saveFile) Then
-		    MessageBox("Refactoring suggestions report generated successfully!  ➡️ " + endofline + dlg.SuggestedFileName) 
-		    saveFile.Open()
-		  Else
-		    MessageBox("Error generating refactoring suggestions report.")
-		  End If
+		    
+		    // Check if we have suggestions
+		    Var allMethods() As CodeElement = mAnalyzer.GetMethodElements()
+		    Var hasSuggestions As Boolean = False
+		    
+		    For Each method As CodeElement In allMethods
+		      If method.RefactoringSuggestions.Count > 0 Then
+		        hasSuggestions = True
+		        Exit For
+		      End If
+		    Next
+		    
+		    If Not hasSuggestions Then
+		      MessageBox("No refactoring suggestions found. Your code looks good!")
+		      Return
+		    End If
+		    
+		    // Get save location
+		    Var dlg As New SaveFileDialog
+		    dlg.SuggestedFileName = "RefactoringSuggestions_" + DateTime.Now.ToString("yyyy-MM-dd_HHmm") + ".pdf"
+		    dlg.Filter = "PDF Files (*.pdf)|*.pdf"
+		    
+		    Var saveFile As FolderItem = dlg.ShowModal()
+		    If saveFile = Nil Then Return
+		    
+		    // Generate the PDF
+		    Var generator As New ReportGenerator
+		    If generator.GenerateRefactoringSuggestionsReport(mAnalyzer, saveFile) Then
+		      MessageBox("Refactoring suggestions report generated successfully!  ➡️ " + endofline + dlg.SuggestedFileName) 
+		      saveFile.Open()
+		    Else
+		      MessageBox("Error generating refactoring suggestions report.")
+		    End If
 		  Catch e As RuntimeException
 		    MessageBox("Error generating refactoring report: " + e.Message)
 		  End Try
@@ -761,68 +761,68 @@ End
 	#tag Event
 		Sub Pressed()
 		  Try
-		  //Sub GenerateHotSpotsPDFButton_Pressed()
-		  If mAnalyzer = Nil Then
-		    MessageBox("Please scan a project first")
-		    Return
-		  End If
-		  
-		  Var elements() As CodeElement = mAnalyzer.GetMethodElements()
-		  
-		  If elements.Count = 0 Then
-		    MessageBox("No methods found in the scanned project")
-		    Return
-		  End If
-		  
-		  // DEBUG: Check complexity values
-		  Logger.Log("=== Checking Complexity Values ===")
-		  For i As Integer = 0 To Min(4, elements.LastIndex)
-		    Var element As CodeElement = elements(i)
-		    Logger.Log("Method: " + element.FullPath)
-		    Logger.Log("  Complexity: " + element.CyclomaticComplexity.ToString)
-		    Logger.Log("  LOC: " + element.LinesOfCode.ToString)
-		    Logger.Log("  Params: " + element.ParameterCount.ToString)
-		  Next
-		  Logger.Log("=== End Debug ===")
-		  
-		  
-		  
-		  
-		  
-		  // Generate hot spots
-		  Var hotSpots() As HotSpot = HotSpotsGenerator.GenerateHotSpots(elements)
-		  
-		  If hotSpots.Count = 0 Then
-		    MessageBox("No significant hot spots detected in this project!")
-		    Return
-		  End If
-		  
-		  // Ask user where to save
-		  Var dlg As New SaveFileDialog
-		  dlg.SuggestedFileName = "HotSpots_Report.pdf"
-		  dlg.Filter = "PDF Files|*.pdf"
-		  
-		  Var f As FolderItem = dlg.ShowModal
-		  If f <> Nil Then
-		    Var generator As New ReportGenerator
-		    
-		    // Convert FolderItem to String
-		    Var projectName As String
-		    If mLastScannedFolder <> Nil Then
-		      projectName = mLastScannedFolder.Name
-		    Else
-		      projectName = "Unknown Project"
+		    //Sub GenerateHotSpotsPDFButton_Pressed()
+		    If mAnalyzer = Nil Then
+		      MessageBox("Please scan a project first")
+		      Return
 		    End If
 		    
-		    generator.GenerateHotSpotsReportPDF(hotSpots, f.NativePath, projectName)
+		    Var elements() As CodeElement = mAnalyzer.GetMethodElements()
 		    
-		    MessageBox("Hot Spots report generated successfully! ➡️ " + EndOfLine + _
-		    dlg.Title  + EndOfLine + _
-		    "Found " + hotSpots.Count.ToString + " hot spots")
-		    dlg.Result.Open
+		    If elements.Count = 0 Then
+		      MessageBox("No methods found in the scanned project")
+		      Return
+		    End If
 		    
-		  End If
-		  
+		    // DEBUG: Check complexity values
+		    Logger.Log("=== Checking Complexity Values ===")
+		    For i As Integer = 0 To Min(4, elements.LastIndex)
+		      Var element As CodeElement = elements(i)
+		      Logger.Log("Method: " + element.FullPath)
+		      Logger.Log("  Complexity: " + element.CyclomaticComplexity.ToString)
+		      Logger.Log("  LOC: " + element.LinesOfCode.ToString)
+		      Logger.Log("  Params: " + element.ParameterCount.ToString)
+		    Next
+		    Logger.Log("=== End Debug ===")
+		    
+		    
+		    
+		    
+		    
+		    // Generate hot spots
+		    Var hotSpots() As HotSpot = HotSpotsGenerator.GenerateHotSpots(elements)
+		    
+		    If hotSpots.Count = 0 Then
+		      MessageBox("No significant hot spots detected in this project!")
+		      Return
+		    End If
+		    
+		    // Ask user where to save
+		    Var dlg As New SaveFileDialog
+		    dlg.SuggestedFileName = "HotSpots_Report.pdf"
+		    dlg.Filter = "PDF Files|*.pdf"
+		    
+		    Var f As FolderItem = dlg.ShowModal
+		    If f <> Nil Then
+		      Var generator As New ReportGenerator
+		      
+		      // Convert FolderItem to String
+		      Var projectName As String
+		      If mLastScannedFolder <> Nil Then
+		        projectName = mLastScannedFolder.Name
+		      Else
+		        projectName = "Unknown Project"
+		      End If
+		      
+		      generator.GenerateHotSpotsReportPDF(hotSpots, f.NativePath, projectName)
+		      
+		      MessageBox("Hot Spots report generated successfully! ➡️ " + EndOfLine + _
+		      dlg.Title  + EndOfLine + _
+		      "Found " + hotSpots.Count.ToString + " hot spots")
+		      dlg.Result.Open
+		      
+		    End If
+		    
 		  Catch e As RuntimeException
 		    MessageBox("Error generating hot spots report: " + e.Message)
 		  End Try
@@ -871,23 +871,23 @@ End
 	#tag Event
 		Sub Pressed()
 		  Try
-		  // Private Sub btnGenerateDependencyGraph_Pressed()
-		  // Let user choose where to save
-		  Var dlg As New SelectFolderDialog
-		  dlg.Title = "Select folder to save dependency graph"
-		  dlg.PromptText = "Choose location:"
-		  
-		  Var folder As FolderItem = dlg.ShowModal()
-		  
-		  If folder <> Nil Then
-		    If mAnalyzer = Nil Then
-		      MessageBox "Please scan a project folder first."
-		      Return
+		    // Private Sub btnGenerateDependencyGraph_Pressed()
+		    // Let user choose where to save
+		    Var dlg As New SelectFolderDialog
+		    dlg.Title = "Select folder to save dependency graph"
+		    dlg.PromptText = "Choose location:"
+		    
+		    Var folder As FolderItem = dlg.ShowModal()
+		    
+		    If folder <> Nil Then
+		      If mAnalyzer = Nil Then
+		        MessageBox "Please scan a project folder first."
+		        Return
+		      End If
+		      Var gg As New GraphGenerator
+		      gg.GenerateDependencyGraphPNG(mAnalyzer.GetAllElements(), folder)
 		    End If
-		    Var gg As New GraphGenerator
-		    gg.GenerateDependencyGraphPNG(mAnalyzer.GetAllElements(), folder)
-		  End If
-		  
+		    
 		  Catch e As RuntimeException
 		    MessageBox("Error generating dependency graph: " + e.Message)
 		  End Try
@@ -898,21 +898,21 @@ End
 	#tag Event
 		Sub Pressed()
 		  Try
-		  // Private Sub btnGenerateInteractiveGraph_Pressed()
-		  Var dlg As New SelectFolderDialog
-		  dlg.Title = "Select folder to save interactive graph"
-		  
-		  Var folder As FolderItem = dlg.ShowModal()
-		  
-		  If folder <> Nil Then
-		    If mAnalyzer = Nil Then
-		      MessageBox "Please scan a project folder first."
-		      Return
+		    // Private Sub btnGenerateInteractiveGraph_Pressed()
+		    Var dlg As New SelectFolderDialog
+		    dlg.Title = "Select folder to save interactive graph"
+		    
+		    Var folder As FolderItem = dlg.ShowModal()
+		    
+		    If folder <> Nil Then
+		      If mAnalyzer = Nil Then
+		        MessageBox "Please scan a project folder first."
+		        Return
+		      End If
+		      Var gg As New GraphGenerator
+		      gg.GenerateInteractiveDependencyGraph(mAnalyzer.GetAllElements(), folder)
 		    End If
-		    Var gg As New GraphGenerator
-		    gg.GenerateInteractiveDependencyGraph(mAnalyzer.GetAllElements(), folder)
-		  End If
-		  
+		    
 		  Catch e As RuntimeException
 		    MessageBox("Error generating interactive graph: " + e.Message)
 		  End Try
