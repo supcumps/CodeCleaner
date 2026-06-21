@@ -29,6 +29,7 @@ Protected Class CodeParser
 		  Var lines() As String = content.Split(EndOfLine)
 		  Var context As New ParsingContext
 		  context.FileName = fileName
+		  If fileName.EndsWith(".xojo_window") Then context.CurrentModule = fileName.Replace(".xojo_window", "")
 		  
 		  For Each line As String In lines
 		    Var trimmedLine As String = line.Trim
@@ -55,6 +56,10 @@ Protected Class CodeParser
 		    ElseIf IsPropertyDeclaration(trimmedLine) Then
 		      ProcessPropertyDeclaration(trimmedLine, context)
 		      
+		    ElseIf trimmedLine.BeginsWith("#tag Events ") Then
+		      context.CurrentClass = trimmedLine.Middle(12).Trim
+		    ElseIf trimmedLine.BeginsWith("#tag EndEvents") Then
+		      context.CurrentClass = ""
 		    ElseIf trimmedLine.BeginsWith("#tag EndMethod") Or trimmedLine.BeginsWith("#tag EndEvent") Then
 		      // Authoritative method-end signal from Xojo file format -- always correct
 		      FinalizeMethod(context)
@@ -463,7 +468,7 @@ Protected Class CodeParser
 		  End If
 		  
 		  // Extract the parameter list
-		  Var paramList As String = signature.Mid(openParen + 1, closeParen - openParen - 1).Trim
+		  Var paramList As String = signature.Middle(openParen + 1, closeParen - openParen - 1).Trim
 		  element.Parameters = paramList
 		  
 		  If paramList = "" Then

@@ -308,6 +308,7 @@ Protected Class GraphGenerator
 		  html = html + "" + EndOfLine
 		  html = html + "        network.once('stabilizationIterationsDone', function() {" + EndOfLine
 		  html = html + "          network.setOptions({ physics: false });" + EndOfLine
+		  html = html + "          clusterByClass();" + EndOfLine
 		  html = html + "          setTimeout(function() {" + EndOfLine
 		  html = html + "            network.fit({ padding: 50, animation: { duration: 500 } });" + EndOfLine
 		  html = html + "          }, 100);" + EndOfLine
@@ -315,10 +316,11 @@ Protected Class GraphGenerator
 		  html = html + "" + EndOfLine
 		  html = html + "        network.on('click', function(params) {" + EndOfLine
 		  html = html + "          if (params.nodes.length > 0) {" + EndOfLine
-		  html = html + "            highlightConnections(params.nodes[0]);" + EndOfLine
+		  html = html + "            if (network.isCluster(params.nodes[0])) { network.openCluster(params.nodes[0]); return; }" + EndOfLine
+		  html = html + "            focusNode(params.nodes[0]);" + EndOfLine
 		  html = html + "            showNodeInfo(params.nodes[0]);" + EndOfLine
 		  html = html + "          } else {" + EndOfLine
-		  html = html + "            resetHighlight();" + EndOfLine
+		  html = html + "            clearFocus();" + EndOfLine
 		  html = html + "            document.getElementById('info').style.display = 'none';" + EndOfLine
 		  html = html + "          }" + EndOfLine
 		  html = html + "        });" + EndOfLine
@@ -330,6 +332,102 @@ Protected Class GraphGenerator
 		  html = html + "        document.getElementById('error').style.display = 'block';" + EndOfLine
 		  html = html + "        console.error(e);" + EndOfLine
 		  html = html + "      }" + EndOfLine
+		  html = html + "    }" + EndOfLine
+		  html = html + "" + EndOfLine
+		  html = html + "    function openAllClusters() {" + EndOfLine
+		  html = html + "      var guard = 0;" + EndOfLine
+		  html = html + "      var found = true;" + EndOfLine
+		  html = html + "      while (found && guard < 100) {" + EndOfLine
+		  html = html + "        found = false;" + EndOfLine
+		  html = html + "        guard++;" + EndOfLine
+		  html = html + "        network.body.nodeIndices.slice().forEach(function(id) {" + EndOfLine
+		  html = html + "          if (network.isCluster(id)) { network.openCluster(id); found = true; }" + EndOfLine
+		  html = html + "        });" + EndOfLine
+		  html = html + "      }" + EndOfLine
+		  html = html + "    }" + EndOfLine
+		  html = html + "" + EndOfLine
+		  html = html + "    function focusNode(nodeId) {" + EndOfLine
+		  html = html + "      var connected = network.getConnectedNodes(nodeId);" + EndOfLine
+		  html = html + "      var keep = {};" + EndOfLine
+		  html = html + "      keep[nodeId] = true;" + EndOfLine
+		  html = html + "      connected.forEach(function(id) { keep[id] = true; });" + EndOfLine
+		  html = html + "      network.body.nodeIndices.slice().forEach(function(id) {" + EndOfLine
+		  html = html + "        if (network.isCluster(id)) return;" + EndOfLine
+		  html = html + "        if (keep[id]) {" + EndOfLine
+		  html = html + "          network.body.data.nodes.update({ id: id, opacity: 1, borderWidth: (id === nodeId ? 5 : 3) });" + EndOfLine
+		  html = html + "        } else {" + EndOfLine
+		  html = html + "          network.body.data.nodes.update({ id: id, opacity: 0.12 });" + EndOfLine
+		  html = html + "        }" + EndOfLine
+		  html = html + "      });" + EndOfLine
+		  html = html + "      setTimeout(function() {" + EndOfLine
+		  html = html + "        network.fit({ nodes: [nodeId].concat(connected), padding: 90, animation: { duration: 400 } });" + EndOfLine
+		  html = html + "      }, 80);" + EndOfLine
+		  html = html + "    }" + EndOfLine
+		  html = html + "" + EndOfLine
+		  html = html + "    function clearFocus() {" + EndOfLine
+		  html = html + "      openAllClusters();" + EndOfLine
+		  html = html + "      var resets = network.body.data.nodes.get().map(function(n) { return { id: n.id, opacity: 1, borderWidth: 2 }; });" + EndOfLine
+		  html = html + "      network.body.data.nodes.update(resets);" + EndOfLine
+		  html = html + "      clusterByClass();" + EndOfLine
+		  html = html + "      setTimeout(function() { network.fit({ padding: 50, animation: { duration: 400 } }); }, 120);" + EndOfLine
+		  html = html + "    }" + EndOfLine
+		  html = html + "" + EndOfLine
+		  html = html + "    function revealNode(nodeId) {" + EndOfLine
+		  html = html + "      network.body.nodeIndices.slice().forEach(function(id) {" + EndOfLine
+		  html = html + "        if (network.isCluster(id)) {" + EndOfLine
+		  html = html + "          var members = network.getNodesInCluster(id);" + EndOfLine
+		  html = html + "          if (members.indexOf(nodeId) !== -1) { network.openCluster(id); }" + EndOfLine
+		  html = html + "        }" + EndOfLine
+		  html = html + "      });" + EndOfLine
+		  html = html + "    }" + EndOfLine
+		  html = html + "" + EndOfLine
+		  html = html + "    function clusterByClass() {" + EndOfLine
+		  html = html + "      var classNames = {};" + EndOfLine
+		  html = html + "      allNodes.forEach(function(n) {" + EndOfLine
+		  html = html + "        var fp = n.fullPath || '';" + EndOfLine
+		  html = html + "        var parts = fp.split('.');" + EndOfLine
+		  html = html + "        var cls = parts.length >= 2 ? parts[0] : 'Global';" + EndOfLine
+		  html = html + "        classNames[cls] = true;" + EndOfLine
+		  html = html + "      });" + EndOfLine
+		  html = html + "      Object.keys(classNames).forEach(function(cls) {" + EndOfLine
+		  html = html + "        network.cluster({" + EndOfLine
+		  html = html + "          joinCondition: function(opts) {" + EndOfLine
+		  html = html + "            var fp = opts.fullPath || '';" + EndOfLine
+		  html = html + "            var parts = fp.split('.');" + EndOfLine
+		  html = html + "            var c = parts.length >= 2 ? parts[0] : 'Global';" + EndOfLine
+		  html = html + "            return c === cls;" + EndOfLine
+		  html = html + "          }," + EndOfLine
+		  html = html + "          processProperties: function(clusterOptions, childNodes) {" + EndOfLine
+		  html = html + "            clusterOptions.label = cls + ' (' + childNodes.length + ')';" + EndOfLine
+		  html = html + "            return clusterOptions;" + EndOfLine
+		  html = html + "          }," + EndOfLine
+		  html = html + "          clusterNodeProperties: {" + EndOfLine
+		  html = html + "            id: 'cluster:' + cls," + EndOfLine
+		  html = html + "            shape: 'box'," + EndOfLine
+		  html = html + "            color: { background: '#34495e', border: '#1a242f', highlight: { background: '#3d566e', border: '#000000' } }," + EndOfLine
+		  html = html + "            font: { color: 'white', size: 18, face: 'Arial' }," + EndOfLine
+		  html = html + "            borderWidth: 3," + EndOfLine
+		  html = html + "            margin: 12," + EndOfLine
+		  html = html + "            shadow: true" + EndOfLine
+		  html = html + "          }" + EndOfLine
+		  html = html + "        });" + EndOfLine
+		  html = html + "      });" + EndOfLine
+		  html = html + "      network.cluster({" + EndOfLine
+		  html = html + "        joinCondition: function(opts) { return opts.fullPath !== undefined && opts.fullPath !== ''; }," + EndOfLine
+		  html = html + "        processProperties: function(clusterOptions, childNodes) {" + EndOfLine
+		  html = html + "          clusterOptions.label = 'Other (' + childNodes.length + ')';" + EndOfLine
+		  html = html + "          return clusterOptions;" + EndOfLine
+		  html = html + "        }," + EndOfLine
+		  html = html + "        clusterNodeProperties: {" + EndOfLine
+		  html = html + "          id: 'cluster:__other__'," + EndOfLine
+		  html = html + "          shape: 'box'," + EndOfLine
+		  html = html + "          color: { background: '#7f8c8d', border: '#4d5656', highlight: { background: '#95a5a6', border: '#000000' } }," + EndOfLine
+		  html = html + "          font: { color: 'white', size: 16, face: 'Arial' }," + EndOfLine
+		  html = html + "          borderWidth: 3," + EndOfLine
+		  html = html + "          margin: 12," + EndOfLine
+		  html = html + "          shadow: true" + EndOfLine
+		  html = html + "        }" + EndOfLine
+		  html = html + "      });" + EndOfLine
 		  html = html + "    }" + EndOfLine
 		  html = html + "" + EndOfLine
 		  html = html + "    function highlightConnections(nodeId) {" + EndOfLine
@@ -441,14 +539,15 @@ Protected Class GraphGenerator
 		  html = html + "      document.getElementById('searchBox').addEventListener('input', function(e) {" + EndOfLine
 		  html = html + "        var term = e.target.value.toLowerCase();" + EndOfLine
 		  html = html + "        if (!term) {" + EndOfLine
-		  html = html + "          resetHighlight();" + EndOfLine
+		  html = html + "          clearFocus();" + EndOfLine
 		  html = html + "          return;" + EndOfLine
 		  html = html + "        }" + EndOfLine
 		  html = html + "        var matches = allNodes.filter(n => n.label.toLowerCase().includes(term));" + EndOfLine
 		  html = html + "        if (matches.length > 0) {" + EndOfLine
+		  html = html + "          revealNode(matches[0].id);" + EndOfLine
 		  html = html + "          network.selectNodes([matches[0].id]);" + EndOfLine
 		  html = html + "          network.focus(matches[0].id, { scale: 1.2, animation: { duration: 500 } });" + EndOfLine
-		  html = html + "          highlightConnections(matches[0].id);" + EndOfLine
+		  html = html + "          focusNode(matches[0].id);" + EndOfLine
 		  html = html + "          showNodeInfo(matches[0].id);" + EndOfLine
 		  html = html + "        }" + EndOfLine
 		  html = html + "      });" + EndOfLine
@@ -491,28 +590,16 @@ Protected Class GraphGenerator
 		  html = html + "    }" + EndOfLine
 		  html = html + "" + EndOfLine
 		  html = html + "    function resetView() {" + EndOfLine
-		  html = html + "      if (network) {" + EndOfLine
-		  html = html + "        // Clear and restore both nodes and edges" + EndOfLine
-		  html = html + "        network.body.data.nodes.clear();" + EndOfLine
-		  html = html + "        network.body.data.edges.clear();" + EndOfLine
-		  html = html + "        network.body.data.nodes.add(allNodes);" + EndOfLine
-		  html = html + "        network.body.data.edges.add(allEdges);" + EndOfLine
-		  html = html + "        " + EndOfLine
-		  html = html + "        // Reset all styling" + EndOfLine
-		  html = html + "        resetHighlight();" + EndOfLine
-		  html = html + "        " + EndOfLine
-		  html = html + "        // Clear search and filter" + EndOfLine
-		  html = html + "        document.getElementById('searchBox').value = '';" + EndOfLine
-		  html = html + "        document.getElementById('complexityFilter').value = 'all';" + EndOfLine
-		  html = html + "        document.getElementById('info').style.display = 'none';" + EndOfLine
-		  html = html + "        " + EndOfLine
-		  html = html + "        // Re-enable physics briefly to reorganize" + EndOfLine
-		  html = html + "        network.setOptions({ physics: { enabled: true } });" + EndOfLine
-		  html = html + "        setTimeout(function() {" + EndOfLine
-		  html = html + "          network.setOptions({ physics: { enabled: false } });" + EndOfLine
-		  html = html + "          network.fit({ padding: 50, animation: { duration: 500 } });" + EndOfLine
-		  html = html + "        }, 500);" + EndOfLine
-		  html = html + "      }" + EndOfLine
+		  html = html + "      if (!network) return;" + EndOfLine
+		  html = html + "      var resets = allNodes.map(function(n) { return Object.assign({}, n, { hidden: false, opacity: 1, borderWidth: 2 }); });" + EndOfLine
+		  html = html + "      network.body.data.nodes.update(resets);" + EndOfLine
+		  html = html + "      network.body.data.edges.update(allEdges);" + EndOfLine
+		  html = html + "      document.getElementById('searchBox').value = '';" + EndOfLine
+		  html = html + "      document.getElementById('complexityFilter').value = 'all';" + EndOfLine
+		  html = html + "      document.getElementById('info').style.display = 'none';" + EndOfLine
+		  html = html + "      openAllClusters();" + EndOfLine
+		  html = html + "      clusterByClass();" + EndOfLine
+		  html = html + "      setTimeout(function() { network.fit({ padding: 50, animation: { duration: 400 } }); }, 120);" + EndOfLine
 		  html = html + "    }" + EndOfLine
 		  html = html + "" + EndOfLine
 		  html = html + "    function fitNetwork() {" + EndOfLine

@@ -1743,6 +1743,12 @@ Protected Class ProjectAnalyzer
           isCalled = (rx.Search(cleanedText) <> Nil)
         End If
         
+        If Not isCalled Then
+          // No-argument method call written without parentheses, e.g. "If obj.IsResolved Then"
+          rx.SearchPattern = "\." + escapedName + "\b"
+          isCalled = (rx.Search(cleanedText) <> Nil)
+        End If
+        
         element.IsUsed = isCalled
       End If
       

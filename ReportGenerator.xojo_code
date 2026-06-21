@@ -1,20 +1,5 @@
 #tag Class
 Protected Class ReportGenerator
-	#tag Constant, Name = kPageWidth, Type = Double, Dynamic = False, Default = "612", Scope = Private
-	#tag EndConstant
-
-	#tag Constant, Name = kPageHeight, Type = Double, Dynamic = False, Default = "792", Scope = Private
-	#tag EndConstant
-
-	#tag Constant, Name = kMargin, Type = Double, Dynamic = False, Default = "50", Scope = Private
-	#tag EndConstant
-
-	#tag Constant, Name = kLineHeight, Type = Double, Dynamic = False, Default = "14", Scope = Private
-	#tag EndConstant
-
-	#tag Constant, Name = kBottomMargin, Type = Double, Dynamic = False, Default = "100", Scope = Private
-	#tag EndConstant
-
 	#tag Method, Flags = &h21
 		Private Function CalculateAggregateStats(methodMetrics() As MethodMetrics) As Dictionary
 		  // Calculate aggregate statistics from method metrics
@@ -316,7 +301,6 @@ Protected Class ReportGenerator
 		End Function
 	#tag EndMethod
 
-
 	#tag Method, Flags = &h0
 		Sub DeduplicateSuggestionsInPlace(ByRef suggestions() As RefactoringSuggestion)
 		  // Private Sub DeduplicateSuggestionsInPlace(ByRef suggestions() As RefactoringSuggestion)
@@ -462,7 +446,7 @@ Protected Class ReportGenerator
 		    
 		    Logger.Log("Rendering top complex methods...")
 		    yPos = RenderTopComplexMethods(g, analyzer, margin, lineHeight, yPos)
-    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
+		    yPos = CheckPageBreak(g, yPos, pageWidth, pageHeight, margin, bottomMargin, currentPage)
 		    Logger.Log("Top complex methods rendered. yPos: " + yPos.ToString)
 		    
 		    Logger.Log("Rendering relationships...")
@@ -637,8 +621,11 @@ Protected Class ReportGenerator
 		      // Impact (truncated to fit)
 		      g.FontSize = 9
 		      Var impactText As String = "Impact: " + hs.ImpactDescription
-		      If impactText.Length > 90 Then
-		        impactText = impactText.Left(87) + "..."
+		      // change
+		      // If impactText.Length > 90 Then
+		      If impactText.Length > 120 Then
+		        
+		        impactText = impactText.Left(117) + "..."
 		      End If
 		      g.DrawText(impactText, margin + 10, currentY)
 		      currentY = currentY + 20
@@ -768,7 +755,7 @@ Protected Class ReportGenerator
 		    // Parameter Complexity
 		    If method.Code.Trim <> "" Then
 		      Var cp As New CodeParser
-    Var paramInfo As Dictionary = cp.ParseMethodParameters(method.Code)
+		      Var paramInfo As Dictionary = cp.ParseMethodParameters(method.Code)
 		      m.ParameterCount = paramInfo.Value("parameterCount")
 		      m.OptionalParameterCount = paramInfo.Value("optionalCount")
 		      m.HasTooManyParameters = (m.ParameterCount > 5)
@@ -784,7 +771,6 @@ Protected Class ReportGenerator
 		  Return metrics
 		End Function
 	#tag EndMethod
-
 
 	#tag Method, Flags = &h21
 		Private Function RenderCodeSmellsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
@@ -947,7 +933,6 @@ Protected Class ReportGenerator
 		  Return yPos
 		End Function
 	#tag EndMethod
-
 
 	#tag Method, Flags = &h21
 		Private Function RenderErrorHandlingAnalysisWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, bottomMargin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer) As Double
@@ -1118,7 +1103,6 @@ Protected Class ReportGenerator
 		  return yPos
 		End Function
 	#tag EndMethod
-
 
 	#tag Method, Flags = &h21
 		Private Function RenderParameterComplexityDetailsWithPageBreaks(g As Graphics, analyzer As ProjectAnalyzer, pageWidth As Integer, pageHeight As Integer, margin As Double, lineHeight As Double, yPos As Double, ByRef currentPage As Integer, bottomMargin As Double) As Double
@@ -1484,7 +1468,7 @@ Protected Class ReportGenerator
 		  Next
 		  
 		  // DEBUG: Check counts BEFORE deduplication
-
+		  
 		  
 		  // DEDUPLICATE EACH PRIORITY GROUP
 		  DeduplicateSuggestionsInPlace(highPriority)
@@ -1492,7 +1476,7 @@ Protected Class ReportGenerator
 		  DeduplicateSuggestionsInPlace(lowPriority)
 		  
 		  // DEBUG: Check counts AFTER deduplication
-
+		  
 		  
 		  // Render high priority first
 		  If highPriority.Count > 0 Then
@@ -1955,7 +1939,6 @@ Protected Class ReportGenerator
 		End Function
 	#tag EndMethod
 
-
 	#tag Method, Flags = &h21
 		Private Function RenderUnusedByType(g As Graphics, unusedElements() As CodeElement, margin As Double, lineHeight As Double, yPos As Double) As Double
 		  // Render unused elements grouped by type
@@ -2163,6 +2146,244 @@ Protected Class ReportGenerator
 	#tag EndMethod
 
 
+	#tag Constant, Name = kBottomMargin, Type = Double, Dynamic = False, Default = \"00", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kLineHeight, Type = Double, Dynamic = False, Default = \"4", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kMargin, Type = Double, Dynamic = False, Default = \"0", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kPageHeight, Type = Double, Dynamic = False, Default = \"92", Scope = Private
+	#tag EndConstant
+
+	#tag Constant, Name = kPageWidth, Type = Double, Dynamic = False, Default = \"12", Scope = Private
+	#tag EndConstant
+
+
+	#tag Method, Flags = &h0
+		Sub GenerateReadme(analyzer As ProjectAnalyzer, projectName As String, outputFolder As FolderItem)
+		  Var allElements() As CodeElement = analyzer.GetAllElements()
+		  Var classes() As CodeElement = analyzer.GetClassElements()
+		  Var modules() As CodeElement = analyzer.GetModuleElements()
+		  Var methods() As CodeElement = analyzer.GetMethodElements()
+		  Var unused() As CodeElement = analyzer.GetUnusedElements()
+		  Var score As QualityScore = analyzer.CalculateQualityScore()
+		  Var nl As String = EndOfLine
+		  Var propCount As Integer = 0
+		  For Each el As CodeElement In allElements
+		    If el.ElementType = "PROPERTY" Then propCount = propCount + 1
+		  Next
+		  Var md As String
+		  md = "# " + projectName + nl + nl
+		  md = md + "_Auto-generated by CodeCleaner on " + DateTime.Now.ToString + "_" + nl + nl
+		  md = md + "## Overview" + nl + nl
+		  md = md + "_Inferred from the code; review and refine._" + nl + nl
+		  Var caps() As String
+		  Var nameBlob As String = ""
+		  For Each el As CodeElement In allElements
+		    nameBlob = nameBlob + " " + el.Name.Lowercase
+		  Next
+		  If nameBlob.IndexOf("pars") >= 0 Then caps.Add("parses source code")
+		  If nameBlob.IndexOf("analy") >= 0 Then caps.Add("analyses project structure")
+		  If nameBlob.IndexOf("quality") >= 0 Or nameBlob.IndexOf("score") >= 0 Or nameBlob.IndexOf("grade") >= 0 Then caps.Add("computes quality scores")
+		  If nameBlob.IndexOf("complex") >= 0 Or nameBlob.IndexOf("hotspot") >= 0 Then caps.Add("identifies complexity hotspots")
+		  If nameBlob.IndexOf("unused") >= 0 Or nameBlob.IndexOf("dead") >= 0 Then caps.Add("detects unused code")
+		  If nameBlob.IndexOf("report") >= 0 Then caps.Add("generates reports")
+		  If nameBlob.IndexOf("graph") >= 0 Or nameBlob.IndexOf("flowchart") >= 0 Or nameBlob.IndexOf("diagram") >= 0 Or nameBlob.IndexOf("chart") >= 0 Then caps.Add("produces visualisations")
+		  If nameBlob.IndexOf("manifest") >= 0 Then caps.Add("reads project manifests")
+		  If nameBlob.IndexOf("export") >= 0 Or nameBlob.IndexOf("html") >= 0 Or nameBlob.IndexOf("pdf") >= 0 Or nameBlob.IndexOf("png") >= 0 Then caps.Add("exports output")
+		  Var anyFileOp As Boolean = False
+		  Var anyDbOp As Boolean = False
+		  Var anyNetOp As Boolean = False
+		  For Each el As CodeElement In allElements
+		    If el.HasFileOperations Then anyFileOp = True
+		    If el.HasDatabaseOperations Then anyDbOp = True
+		    If el.HasNetworkOperations Then anyNetOp = True
+		  Next
+		  If anyFileOp Then caps.Add("reads and writes files")
+		  If anyDbOp Then caps.Add("uses a database")
+		  If anyNetOp Then caps.Add("performs network operations")
+		  If caps.Count > 0 Then
+		    md = md + projectName + " appears to " + String.FromArray(caps, ", ") + "." + nl + nl
+		  Else
+		    md = md + projectName + " is a Xojo application." + nl + nl
+		  End If
+		  Var classNames() As String
+		  For Each c As CodeElement In classes
+		    classNames.Add(c.Name)
+		  Next
+		  If classNames.Count > 0 Then md = md + "**Main classes:** " + String.FromArray(classNames, ", ") + "." + nl + nl
+		  md = md + "## Quality Summary" + nl + nl
+		  md = md + "**Overall score:** " + Format(score.OverallScore, "0.0") + " (" + score.Grade + ")" + nl + nl
+		  md = md + "| Metric | Value |" + nl + "| --- | --- |" + nl
+		  md = md + "| Classes | " + classes.Count.ToString + " |" + nl
+		  md = md + "| Modules | " + modules.Count.ToString + " |" + nl
+		  md = md + "| Methods | " + methods.Count.ToString + " |" + nl
+		  md = md + "| Properties | " + propCount.ToString + " |" + nl
+		  md = md + "| Error handling coverage | " + Format(score.ErrorHandlingCoverage, "0.0") + "% |" + nl
+		  md = md + "| Average complexity | " + Format(score.AverageComplexity, "0.0") + " |" + nl
+		  md = md + "| Unused | " + Format(score.UnusedPercentage, "0.0") + "% |" + nl + nl
+		  md = md + "## Quality Breakdown" + nl + nl
+		  md = md + "| Category | Score |" + nl + "| --- | --- |" + nl
+		  md = md + "| Error Handling | " + Format(score.ErrorHandlingScore, "0.0") + " |" + nl
+		  md = md + "| Complexity | " + Format(score.ComplexityScore, "0.0") + " |" + nl
+		  md = md + "| Code Reuse | " + Format(score.CodeReuseScore, "0.0") + " |" + nl
+		  md = md + "| Parameters | " + Format(score.ParameterScore, "0.0") + " |" + nl
+		  md = md + "| Documentation | " + Format(score.DocumentationScore, "0.0") + " |" + nl + nl
+		  Var containers() As String
+		  Var windowNames() As String
+		  For Each el As CodeElement In allElements
+		    Var cont As String = el.ModuleName
+		    If cont.Trim = "" Then cont = el.Name
+		    If cont.Trim = "" Then cont = "Global"
+		    If containers.IndexOf(cont) = -1 Then containers.Add(cont)
+		    If el.FileName.EndsWith(".xojo_window") Then
+		      Var wn As String = el.ModuleName
+		      If wn.Trim = "" Then wn = el.Name
+		      If windowNames.IndexOf(wn) = -1 Then windowNames.Add(wn)
+		    End If
+		  Next
+		  md = md + "## Architecture" + nl + nl
+		  md = md + "How the main components connect, derived from call relationships." + nl + nl
+		  For Each cont As String In containers
+		    Var mCount As Integer = 0
+		    Var callsOut() As String
+		    Var callsIn() As String
+		    For Each el As CodeElement In allElements
+		      Var elCont As String = el.ModuleName
+		      If elCont.Trim = "" Then elCont = el.Name
+		      If elCont.Trim = "" Then elCont = "Global"
+		      If elCont = cont Then
+		        If el.ElementType = "METHOD" Then mCount = mCount + 1
+		        For Each callee As CodeElement In el.CallsTo
+		          Var tc As String = callee.ModuleName
+		          If tc.Trim = "" Then tc = callee.Name
+		          If tc.Trim <> "" And tc <> cont And callsOut.IndexOf(tc) = -1 Then callsOut.Add(tc)
+		        Next
+		        For Each caller As CodeElement In el.CalledBy
+		          Var fc As String = caller.ModuleName
+		          If fc.Trim = "" Then fc = caller.Name
+		          If fc.Trim <> "" And fc <> cont And callsIn.IndexOf(fc) = -1 Then callsIn.Add(fc)
+		        Next
+		      End If
+		    Next
+		    md = md + "### " + cont + nl
+		    md = md + "- Methods: " + mCount.ToString + nl
+		    If callsOut.Count > 0 Then md = md + "- Calls: " + String.FromArray(callsOut, ", ") + nl
+		    If callsIn.Count > 0 Then md = md + "- Called by: " + String.FromArray(callsIn, ", ") + nl
+		    md = md + nl
+		  Next
+		  md = md + "## Complexity Hotspots" + nl + nl
+		  Var hot() As CodeElement
+		  For Each m As CodeElement In methods
+		    If m.CyclomaticComplexity >= 11 Then hot.Add(m)
+		  Next
+		  If hot.Count = 0 Then
+		    md = md + "No methods with cyclomatic complexity of 11 or more." + nl + nl
+		  Else
+		    For i As Integer = 0 To hot.LastIndex - 1
+		      Var maxIdx As Integer = i
+		      For j As Integer = i + 1 To hot.LastIndex
+		        If hot(j).CyclomaticComplexity > hot(maxIdx).CyclomaticComplexity Then maxIdx = j
+		      Next
+		      If maxIdx <> i Then
+		        Var tmp As CodeElement = hot(i)
+		        hot(i) = hot(maxIdx)
+		        hot(maxIdx) = tmp
+		      End If
+		    Next
+		    md = md + "| Method | Complexity | LOC |" + nl + "| --- | --- | --- |" + nl
+		    Var shown As Integer = 0
+		    For Each m As CodeElement In hot
+		      If shown < 12 Then
+		        md = md + "| " + m.FullPath + " | " + m.CyclomaticComplexity.ToString + " | " + m.LinesOfCode.ToString + " |" + nl
+		        shown = shown + 1
+		      End If
+		    Next
+		    md = md + nl
+		  End If
+		  md = md + "## Unused Elements" + nl + nl
+		  If unused.Count = 0 Then
+		    md = md + "None detected." + nl + nl
+		  Else
+		    For Each el As CodeElement In unused
+		      md = md + "- " + el.FullPath + " (" + el.ElementType + ")" + nl
+		    Next
+		    md = md + nl
+		  End If
+		  md = md + "## Classes and Modules" + nl + nl
+		  For Each cont As String In containers
+		    If windowNames.IndexOf(cont) = -1 Then
+		      md = md + "### " + cont + nl + nl
+		      Var hasProp As Boolean = False
+		      For Each el As CodeElement In allElements
+		        Var elCont As String = el.ModuleName
+		        If elCont.Trim = "" Then elCont = el.Name
+		        If elCont.Trim = "" Then elCont = "Global"
+		        If elCont = cont And el.ElementType = "PROPERTY" Then
+		          If hasProp Then
+		            md = md + ", " + el.Name
+		          Else
+		            md = md + "**Properties:** " + el.Name
+		            hasProp = True
+		          End If
+		        End If
+		      Next
+		      If hasProp Then md = md + nl + nl
+		      md = md + "**Methods:**" + nl + nl
+		      Var anyMethod As Boolean = False
+		      For Each el As CodeElement In allElements
+		        Var elCont As String = el.ModuleName
+		        If elCont.Trim = "" Then elCont = el.Name
+		        If elCont.Trim = "" Then elCont = "Global"
+		        If elCont = cont And el.ElementType = "METHOD" Then
+		          anyMethod = True
+		          Var flags As String = ""
+		          If el.HasTryCatch Then flags = flags + " [try/catch]"
+		          If el.HasFileOperations Then flags = flags + " [I/O]"
+		          If el.HasDatabaseOperations Then flags = flags + " [DB]"
+		          If el.HasNetworkOperations Then flags = flags + " [net]"
+		          If el.IsUsed = False Then flags = flags + " [unused]"
+		          md = md + "- `" + el.Name + "(" + el.Parameters + ")` - complexity " + el.CyclomaticComplexity.ToString + ", " + el.LinesOfCode.ToString + " LOC" + flags + nl
+		        End If
+		      Next
+		      If anyMethod = False Then md = md + "_None_" + nl
+		      md = md + nl
+		    End If
+		  Next
+		  md = md + "## Windows and Controls" + nl + nl
+		  For Each win As String In windowNames
+		    md = md + "### " + win + nl + nl
+		    Var controlNames() As String
+		    For Each el As CodeElement In allElements
+		      If el.ElementType = "METHOD" And el.ModuleName = win And el.ParentClass.Trim <> "" Then
+		        If controlNames.IndexOf(el.ParentClass) = -1 Then controlNames.Add(el.ParentClass)
+		      End If
+		    Next
+		    If controlNames.Count = 0 Then
+		      md = md + "_No event handlers detected._" + nl + nl
+		    Else
+		      For Each ctl As String In controlNames
+		        Var evs() As String
+		        For Each el As CodeElement In allElements
+		          If el.ElementType = "METHOD" And el.ModuleName = win And el.ParentClass = ctl Then evs.Add(el.Name)
+		        Next
+		        md = md + "- **" + ctl + "**: " + String.FromArray(evs, ", ") + nl
+		      Next
+		      md = md + nl
+		    End If
+		  Next
+		  Var f As FolderItem = outputFolder.Child("README.md")
+		  If f <> Nil And f.Exists Then f.Remove
+		  Var t As TextOutputStream = TextOutputStream.Create(f)
+		  t.Write(md)
+		  t.Close
+		  Var doneMsg As String = "README.md generated at " + f.NativePath
+		  MessageBox(doneMsg)
+		End Sub
+	#tag EndMethod
 	#tag ViewBehavior
 		#tag ViewProperty
 			Name="Name"

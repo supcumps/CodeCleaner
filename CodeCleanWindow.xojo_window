@@ -360,7 +360,7 @@ Begin DesktopWindow CodeCleanWindow
       BevelStyle      =   0
       Bold            =   False
       ButtonStyle     =   0
-      Caption         =   "Dependency Graph (As PNG)"
+      Caption         =   "Generate README"
       CaptionAlignment=   3
       CaptionDelta    =   0
       CaptionPosition =   1
@@ -874,7 +874,7 @@ End
 		    // Private Sub btnGenerateDependencyGraph_Pressed()
 		    // Let user choose where to save
 		    Var dlg As New SelectFolderDialog
-		    dlg.Title = "Select folder to save dependency graph"
+		    dlg.Title = "Select folder to save README"
 		    dlg.PromptText = "Choose location:"
 		    
 		    Var folder As FolderItem = dlg.ShowModal()
@@ -884,12 +884,22 @@ End
 		        MessageBox "Please scan a project folder first."
 		        Return
 		      End If
-		      Var gg As New GraphGenerator
-		      gg.GenerateDependencyGraphPNG(mAnalyzer.GetAllElements(), folder)
+		      Var rg As New ReportGenerator
+		      Var projName As String = folder.Name
+		      If mLastScannedFolder <> Nil And mLastScannedFolder.Exists Then
+		        For pIdx As Integer = 1 To mLastScannedFolder.Count
+		          Var ch As FolderItem = mLastScannedFolder.ChildAt(pIdx)
+		          If ch <> Nil And ch.Name.EndsWith(".xojo_project") Then
+		            projName = ch.Name.Replace(".xojo_project", "")
+		            Exit
+		          End If
+		        Next
+		      End If
+		      rg.GenerateReadme(mAnalyzer, projName, folder)
 		    End If
 		    
 		  Catch e As RuntimeException
-		    MessageBox("Error generating dependency graph: " + e.Message)
+		    MessageBox("Error generating README: " + e.Message)
 		  End Try
 		End Sub
 	#tag EndEvent
